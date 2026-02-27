@@ -1,0 +1,104 @@
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 20px;
+    flex-shrink: 0;
+    z-index: 10;
+    backdrop-filter: blur(12px);
+}
+
+.header__left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.header__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header__logo-icon {
+    font-size: 24px;
+    filter: drop-shadow(0 0 8px var(--accent-blue-glow));
+}
+
+.header__title {
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+}
+
+.header__connection {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.header__connection.connected {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--accent-green);
+}
+
+.header__connection-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-red);
+}
+
+.header__connection.connected .header__connection-dot {
+    background: var(--accent-green);
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.header__center {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex: 1;
+    max-width: 600px;
+}
+
+.header__workflow-select {
+    flex-shrink: 0;
+}
+
+.header__workflow-select select {
+    width: 180px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.header__input-group {
+    flex: 1;
+}
+
+.header__input-group input {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.header__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}

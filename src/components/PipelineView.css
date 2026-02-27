@@ -1,0 +1,107 @@
+.pipeline-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow: auto;
+}
+
+.pipeline-view--empty {
+    align-items: center;
+    justify-content: center;
+}
+
+.pipeline-view__placeholder {
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.pipeline-view__placeholder-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px var(--accent-blue-glow));
+}
+
+.pipeline-view__placeholder h2 {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.pipeline-view__placeholder p {
+    font-size: 14px;
+}
+
+.pipeline-view__header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
+}
+
+.pipeline-view__workflow-icon {
+    font-size: 32px;
+}
+
+.pipeline-view__workflow-name {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.pipeline-view__workflow-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.pipeline-view__canvas {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 20px 0;
+}
+
+.pipeline-view__chain {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.pipeline-view__node {
+    display: flex;
+    align-items: center;
+}
+
+.pipeline-view__connector {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin: 0 4px;
+}
+
+.pipeline-view__line--active {
+    animation: dash-flow 0.8s linear infinite;
+    stroke-dasharray: 6 4 !important;
+}
+
+.pipeline-view__step-labels {
+    display: flex;
+    justify-content: center;
+    gap: 280px;
+    margin-top: 12px;
+}
+
+.pipeline-view__step-label {
+    text-align: center;
+}
+
+.pipeline-view__step-num {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
