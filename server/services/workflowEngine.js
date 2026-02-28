@@ -37,8 +37,10 @@ export class WorkflowEngine {
         try {
             // Execute agents in order defined by the workflow steps
             let previousOutput = initialInput;
+            const totalSteps = workflow.steps.length;
 
-            for (const step of workflow.steps) {
+            for (let i = 0; i < workflow.steps.length; i++) {
+                const step = workflow.steps[i];
                 const agent = agents.find((a) => a.id === step.agentId);
                 if (!agent) {
                     throw new Error(`Agent ${step.agentId} not found`);
@@ -49,6 +51,16 @@ export class WorkflowEngine {
                 if (step.inputTemplate) {
                     stepInput = step.inputTemplate.replace('{{input}}', previousOutput);
                 }
+
+                this.broadcast({
+                    type: 'workflow:progress',
+                    runId,
+                    currentStep: i + 1,
+                    totalSteps,
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    timestamp: new Date().toISOString(),
+                });
 
                 this.broadcast({
                     type: 'agent:log',

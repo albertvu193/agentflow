@@ -51,6 +51,14 @@ wss.on('connection', (ws) => {
     });
 });
 
+// Prevent server crash on unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception (server staying alive):', err.message);
+});
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled rejection (server staying alive):', err?.message || err);
+});
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`\n🚀 Agent Workflow Server running on http://localhost:${PORT}`);

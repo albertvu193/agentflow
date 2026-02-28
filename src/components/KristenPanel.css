@@ -1,7 +1,9 @@
 .kristen-panel {
     max-width: 900px;
+    width: 100%;
     margin: 0 auto;
     padding: 24px;
+    padding-bottom: 80px;
 }
 
 .kristen-header {
@@ -315,4 +317,76 @@
     align-items: center;
     gap: 12px;
     padding: 48px;
+}
+
+/* ── Section progress bar ── */
+
+.kristen-progress {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.kristen-progress__header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.kristen-progress__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.kristen-progress__pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-blue, #6366f1);
+    font-family: var(--font-mono, monospace);
+}
+
+.kristen-progress__track {
+    height: 3px;
+    background: var(--border-subtle, rgba(255,255,255,0.06));
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.kristen-progress__fill {
+    height: 100%;
+    background: var(--accent-blue, #6366f1);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+.kristen-progress__sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.kristen-progress__tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--bg-glass, rgba(255,255,255,0.03));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+    color: var(--text-muted, #64748b);
+    white-space: nowrap;
+}
+
+.kristen-progress__tag--done {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--accent-green, #22c55e);
+}
+
+.kristen-progress__tag--active {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--accent-blue, #6366f1);
+    color: var(--accent-blue, #6366f1);
+    animation: kristen-pulse-anim 1.5s ease-in-out infinite;
 }

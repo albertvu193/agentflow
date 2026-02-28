@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const API_BASE = '/api';
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = isDev ? 'http://localhost:3001/api' : '/api';
 
 export function useSLR() {
     const [batchId, setBatchId] = useState(null);

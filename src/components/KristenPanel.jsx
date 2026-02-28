@@ -128,6 +128,11 @@ export function KristenPanel() {
                         <div className="kristen-stream-filename">{kristen.uploadInfo?.filename}</div>
                     </div>
 
+                    {/* Section progress bar */}
+                    {kristen.streamedText && (
+                        <KristenProgressBar streamedText={kristen.streamedText} />
+                    )}
+
                     {/* Live sections */}
                     {kristen.streamedText ? (
                         <div className="kristen-stream-body">
@@ -181,18 +186,18 @@ function parseSections(text) {
     if (!text) return [];
 
     const sections = [];
-    const parts = text.split(/^(## .+)$/gm);
+    const parts = text.split(/^(#+ .+)$/gm);
 
     let currentTitle = null;
     let currentContent = '';
 
     for (const part of parts) {
-        if (part.startsWith('## ')) {
+        if (/^#+ /.test(part)) {
             // Save previous section
             if (currentTitle || currentContent.trim()) {
                 sections.push({ title: currentTitle, content: currentContent.trim() });
             }
-            currentTitle = part.replace('## ', '');
+            currentTitle = part.replace(/^#+\s*(?:\*\*)?(.*?)(?:\*\*)?\s*$/, '$1');
             currentContent = '';
         } else {
             currentContent += part;
@@ -205,6 +210,51 @@ function parseSections(text) {
     }
 
     return sections;
+}
+
+const EXPECTED_SECTIONS = [
+    'WHAT',
+    'WHY',
+    'HYPOTHESIS',
+    'HOW',
+];
+
+function KristenProgressBar({ streamedText }) {
+    const found = EXPECTED_SECTIONS.filter((s) => {
+        const regex = new RegExp(`^#+\\s*(?:\\*\\*)?${s}(?:\\*\\*)?`, 'm');
+        return regex.test(streamedText);
+    });
+    const doneCount = found.length;
+    const total = EXPECTED_SECTIONS.length;
+    const percent = Math.round((doneCount / total) * 100);
+
+    return (
+        <div className="kristen-progress">
+            <div className="kristen-progress__header">
+                <span className="kristen-progress__label">
+                    {doneCount < total ? `Section ${doneCount + 1} of ${total}` : 'Finishing up...'}
+                </span>
+                <span className="kristen-progress__pct">{percent}%</span>
+            </div>
+            <div className="kristen-progress__track">
+                <div className="kristen-progress__fill" style={{ width: `${percent}%` }} />
+            </div>
+            <div className="kristen-progress__sections">
+                {EXPECTED_SECTIONS.map((name, i) => {
+                    const isDone = found.includes(name);
+                    const isActive = !isDone && i === doneCount;
+                    return (
+                        <span
+                            key={name}
+                            className={`kristen-progress__tag ${isDone ? 'kristen-progress__tag--done' : isActive ? 'kristen-progress__tag--active' : ''}`}
+                        >
+                            {isDone ? '✓' : isActive ? '●' : ''} {name}
+                        </span>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 // Simple markdown-to-HTML converter for the result display

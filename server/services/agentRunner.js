@@ -7,6 +7,27 @@ export class AgentRunner {
         this.activeProcesses = new Map();
     }
 
+    _spawnClaude(args, input) {
+        // Remove CLAUDECODE env var to allow nested claude CLI calls
+        const env = { ...process.env };
+        delete env.CLAUDECODE;
+
+        const child = spawn('claude', args, {
+            env,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: true,
+        });
+
+        child.stdin.on('error', () => {});
+        child.stdout.on('error', () => {});
+        child.stderr.on('error', () => {});
+
+        child.stdin.write(input);
+        child.stdin.end();
+
+        return child;
+    }
+
     async runAgent(agent, input, runId) {
         const agentId = agent.id;
 
@@ -29,7 +50,7 @@ export class AgentRunner {
             const args = [
                 '-p',
                 '--output-format', 'json',
-                '--system-prompt', agent.systemPrompt,
+                '--max-turns', '1',
                 '--no-session-persistence',
             ];
 
@@ -37,18 +58,15 @@ export class AgentRunner {
                 args.push('--model', agent.model);
             }
 
-            const child = spawn('claude', args, {
-                env: { ...process.env },
-                stdio: ['pipe', 'pipe', 'pipe'],
-            });
+            // Prepend system prompt into the input to avoid shell escaping issues
+            let stdinInput = fullPrompt;
+            if (agent.systemPrompt) {
+                stdinInput = `[SYSTEM INSTRUCTIONS]\n${agent.systemPrompt}\n[END SYSTEM INSTRUCTIONS]\n\n${fullPrompt}`;
+            }
+
+            const child = this._spawnClaude(args, stdinInput);
 
             this.activeProcesses.set(`${runId}:${agentId}`, child);
-
-            let stdout = '';
-            let stderr = '';
-
-            child.stdin.write(fullPrompt);
-            child.stdin.end();
 
             // Stream progress updates
             const progressInterval = setInterval(() => {
@@ -190,7 +208,7 @@ export class AgentRunner {
         return new Promise((resolve, reject) => {
             const args = [
                 '-p',
-                '--system-prompt', agent.systemPrompt,
+                '--max-turns', '1',
                 '--no-session-persistence',
             ];
 
@@ -198,17 +216,17 @@ export class AgentRunner {
                 args.push('--model', agent.model);
             }
 
-            const child = spawn('claude', args, {
-                env: { ...process.env },
-                stdio: ['pipe', 'pipe', 'pipe'],
-            });
+            // Prepend system prompt into the input to avoid shell escaping issues
+            let stdinInput = fullPrompt;
+            if (agent.systemPrompt) {
+                stdinInput = `[SYSTEM INSTRUCTIONS]\n${agent.systemPrompt}\n[END SYSTEM INSTRUCTIONS]\n\n${fullPrompt}`;
+            }
+
+            const child = this._spawnClaude(args, stdinInput);
 
             this.activeProcesses.set(`${runId}:${agentId}`, child);
 
             let accumulated = '';
-
-            child.stdin.write(fullPrompt);
-            child.stdin.end();
 
             child.stdout.on('data', (data) => {
                 const chunk = data.toString();

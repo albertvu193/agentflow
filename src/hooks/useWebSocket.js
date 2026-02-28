@@ -7,12 +7,15 @@ export function useWebSocket() {
     const [agentOutputs, setAgentOutputs] = useState({});
     const [workflowStatus, setWorkflowStatus] = useState('idle'); // idle, running, completed, error
     const [currentRunId, setCurrentRunId] = useState(null);
+    const [progress, setProgress] = useState(null); // { currentStep, totalSteps, agentId, agentName }
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
 
     const connect = useCallback(() => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.hostname}:3001/ws`;
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const wsHost = isDev ? 'localhost:3001' : window.location.host;
+        const wsUrl = `${protocol}//${wsHost}/ws`;
 
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
@@ -66,9 +69,19 @@ export function useWebSocket() {
                     ]);
                     break;
 
+                case 'workflow:progress':
+                    setProgress({
+                        currentStep: message.currentStep,
+                        totalSteps: message.totalSteps,
+                        agentId: message.agentId,
+                        agentName: message.agentName,
+                    });
+                    break;
+
                 case 'workflow:start':
                     setWorkflowStatus('running');
                     setCurrentRunId(message.runId);
+                    setProgress(null);
                     break;
 
                 case 'workflow:complete':
@@ -100,6 +113,7 @@ export function useWebSocket() {
         setAgentOutputs({});
         setWorkflowStatus('idle');
         setCurrentRunId(null);
+        setProgress(null);
     }, []);
 
     return {
@@ -109,6 +123,7 @@ export function useWebSocket() {
         agentOutputs,
         workflowStatus,
         currentRunId,
+        progress,
         resetState,
     };
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const API_BASE = '/api';
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = isDev ? 'http://localhost:3001/api' : '/api';
 
 export function useKristen() {
     const [paperId, setPaperId] = useState(null);
@@ -13,47 +14,59 @@ export function useKristen() {
 
     const wsRef = useRef(null);
     const jobIdRef = useRef(null);
+    const reconnectTimer = useRef(null);
 
     // Keep jobIdRef in sync so the WS callback can always read the latest
     useEffect(() => { jobIdRef.current = jobId; }, [jobId]);
 
-    const connectWs = useCallback(() => {
-        if (wsRef.current) return;
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+    // Connect WebSocket eagerly on mount so it's ready before any run
+    useEffect(() => {
+        function connect() {
+            if (wsRef.current && wsRef.current.readyState <= 1) return;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const wsHost = isDev ? 'localhost:3001' : window.location.host;
+            const wsUrl = `${protocol}//${wsHost}/ws`;
 
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
+            const ws = new WebSocket(wsUrl);
+            wsRef.current = ws;
 
-        ws.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'init') return;
-            if (msg.jobId !== jobIdRef.current) return;
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'init') return;
+                if (msg.jobId !== jobIdRef.current) return;
 
-            if (msg.type === 'kristen:start') {
-                setStatus('running');
-                setStreamedText('');
-            } else if (msg.type === 'kristen:chunk') {
-                // Live streaming text — use accumulated for the full picture
-                setStreamedText(msg.accumulated);
-            } else if (msg.type === 'kristen:done') {
-                setStatus('done');
-                setResult(msg.result);
-                setStreamedText('');
-            } else if (msg.type === 'kristen:error') {
-                setStatus('error');
-                setError(msg.error);
-            }
+                if (msg.type === 'kristen:start') {
+                    setStatus('running');
+                    setStreamedText('');
+                } else if (msg.type === 'kristen:chunk') {
+                    setStreamedText(msg.accumulated);
+                } else if (msg.type === 'kristen:done') {
+                    setStatus('done');
+                    setResult(msg.result);
+                    setStreamedText('');
+                } else if (msg.type === 'kristen:error') {
+                    setStatus('error');
+                    setError(msg.error);
+                }
+            };
+
+            ws.onclose = () => {
+                wsRef.current = null;
+                reconnectTimer.current = setTimeout(connect, 2000);
+            };
+        }
+
+        connect();
+        return () => {
+            if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+            if (wsRef.current) wsRef.current.close();
         };
-
-        ws.onclose = () => { wsRef.current = null; };
     }, []);
 
+    // Fallback polling in case WS misses something
     useEffect(() => {
         if (jobId && status === 'running') {
-            connectWs();
-
-            // Fallback polling (less frequent since we have streaming now)
             const timer = setInterval(async () => {
                 try {
                     const res = await fetch(`${API_BASE}/kristen/status/${jobId}`);
@@ -72,7 +85,7 @@ export function useKristen() {
             }, 5000);
             return () => clearInterval(timer);
         }
-    }, [jobId, status, connectWs]);
+    }, [jobId, status]);
 
     const uploadFile = async (file) => {
         const formData = new FormData();
@@ -95,6 +108,9 @@ export function useKristen() {
     const startRun = async () => {
         if (!paperId) return;
         setStreamedText('');
+        setResult(null);
+        setError(null);
+
         const res = await fetch(`${API_BASE}/kristen/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -104,8 +120,6 @@ export function useKristen() {
         if (res.ok) {
             setJobId(data.jobId);
             setStatus('running');
-            setResult(null);
-            setError(null);
         } else {
             throw new Error(data.error || 'Run failed');
         }

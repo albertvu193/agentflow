@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { PDFParse } from 'pdf-parse';
 
 export const kristenRouter = Router();
 
 const upload = multer({
-    dest: '/tmp/agentflow_uploads/',
+    dest: path.join(os.tmpdir(), 'agentflow_uploads'),
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 

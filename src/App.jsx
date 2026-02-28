@@ -4,13 +4,14 @@ import { PipelineView } from './components/PipelineView';
 import { SLRPanel } from './components/SLRPanel';
 import { KristenPanel } from './components/KristenPanel';
 import { LogStream } from './components/LogStream';
+import { ProgressBar } from './components/ProgressBar';
 import { AgentEditor } from './components/AgentEditor';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAgents, useWorkflows } from './hooks/useApi';
 import './App.css';
 
 function App() {
-  const { isConnected, agentStatuses, logs, agentOutputs, workflowStatus, currentRunId, resetState } = useWebSocket();
+  const { isConnected, agentStatuses, logs, agentOutputs, workflowStatus, currentRunId, progress, resetState } = useWebSocket();
   const { agents, updateAgent, deleteAgent } = useAgents();
   const { workflows, runWorkflow, stopWorkflow } = useWorkflows();
 
@@ -69,6 +70,13 @@ function App() {
         onOpenEditor={() => setEditingAgent(agents[0] || {})}
         input={input}
         onInputChange={setInput}
+      />
+
+      <ProgressBar
+        progress={progress}
+        workflowStatus={workflowStatus}
+        workflow={selectedWorkflow}
+        agents={agents}
       />
 
       <div className="app__body">
