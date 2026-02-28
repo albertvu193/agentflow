@@ -6,6 +6,7 @@ import { agentsRouter } from './routes/agents.js';
 import { workflowsRouter } from './routes/workflows.js';
 import { memoryRouter } from './routes/memory.js';
 import { slrRouter } from './routes/slrRoutes.js';
+import { kristenRouter } from './routes/kristenRoutes.js';
 import { WorkflowEngine } from './services/workflowEngine.js';
 import { SLRPipeline } from './services/slrPipeline.js';
 import { MemoryManager } from './services/memoryManager.js';
@@ -32,6 +33,7 @@ app.use('/api/agents', agentsRouter);
 app.use('/api/workflows', workflowsRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/slr', slrRouter);
+app.use('/api/kristen', kristenRouter);
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {

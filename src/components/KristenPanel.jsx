@@ -1,0 +1,151 @@
+import { useState, useRef } from 'react';
+import './KristenPanel.css';
+import { useKristen } from '../hooks/useKristen';
+
+export function KristenPanel() {
+    const kristen = useKristen();
+    const fileInputRef = useRef(null);
+    const [dragOver, setDragOver] = useState(false);
+
+    const handleFile = async (file) => {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please upload a PDF file.');
+            return;
+        }
+        try {
+            await kristen.uploadFile(file);
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        if (e.target.files?.[0]) handleFile(e.target.files[0]);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragOver(false);
+        if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+    };
+
+    const handleRun = async () => {
+        try {
+            await kristen.startRun();
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    // Done state — show the overview
+    if (kristen.status === 'done' && kristen.result) {
+        return (
+            <div className="kristen-panel fade-in">
+                <div className="kristen-header">
+                    <h2>Paper Insights</h2>
+                    <p className="text-secondary">{kristen.uploadInfo?.filename}</p>
+                </div>
+                <div className="kristen-result-card">
+                    <div className="kristen-result-content" dangerouslySetInnerHTML={{ __html: formatMarkdown(kristen.result) }} />
+                </div>
+                <div className="kristen-actions">
+                    <button className="btn btn-secondary" onClick={kristen.reset}>Analyze Another Paper</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="kristen-panel fade-in">
+            <div className="kristen-header">
+                <h2>Kristen — Research Paper Insights</h2>
+                <p className="text-secondary">Upload a research paper PDF to get a high-level overview powered by Claude.</p>
+            </div>
+
+            {/* Upload dropzone */}
+            {kristen.status === 'idle' && (
+                <div
+                    className={`upload-dropzone ${dragOver ? 'upload-dropzone--active' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                >
+                    <div className="upload-icon">📑</div>
+                    <h3>Drop a PDF here</h3>
+                    <p className="text-muted">or click to browse</p>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".pdf"
+                        hidden
+                    />
+                </div>
+            )}
+
+            {/* File uploaded — show stats and run button */}
+            {kristen.status === 'uploaded' && kristen.uploadInfo && (
+                <div className="kristen-uploaded-card">
+                    <div className="kristen-file-info">
+                        <span className="kristen-file-icon">📄</span>
+                        <div>
+                            <div className="kristen-filename">{kristen.uploadInfo.filename}</div>
+                            <div className="kristen-file-meta">
+                                {kristen.uploadInfo.pages} pages · {Math.round(kristen.uploadInfo.textLength / 1000)}k characters extracted
+                            </div>
+                        </div>
+                    </div>
+                    <div className="kristen-preview">
+                        <div className="kristen-preview-label">Text Preview</div>
+                        <div className="kristen-preview-text">{kristen.uploadInfo.preview}...</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                        <button className="btn btn-primary" onClick={handleRun}>Generate Insights</button>
+                        <button className="btn btn-secondary" onClick={kristen.reset}>Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Running state */}
+            {kristen.status === 'running' && (
+                <div className="kristen-running-card">
+                    <div className="kristen-spinner-container">
+                        <div className="kristen-spinner" />
+                        <h3>Claude is reading the paper...</h3>
+                        <p className="text-secondary">Extracting structure, findings, methodology, and synthesizing an overview.</p>
+                        <p className="text-muted text-sm" style={{ marginTop: '8px' }}>This may take a minute for longer papers.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Error state */}
+            {kristen.status === 'error' && (
+                <div className="kristen-error-card">
+                    <h3>Something went wrong</h3>
+                    <p className="text-secondary">{kristen.error}</p>
+                    <button className="btn btn-secondary" onClick={kristen.reset} style={{ marginTop: '12px' }}>Try Again</button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Simple markdown-to-HTML converter for the result display
+function formatMarkdown(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+        .replace(/<\/ul>\s*<ul>/g, '')
+        .replace(/\n\n/g, '<br/><br/>')
+        .replace(/\n/g, '<br/>');
+}

@@ -130,6 +130,51 @@ Be practical and specific. Include brief code examples where helpful.`,
 Format as a clear, professional document that any team member can understand.`,
             },
             {
+                id: 'paper-insights',
+                name: 'Paper Insights',
+                role: 'Read a research paper and produce a comprehensive high-level overview',
+                icon: '📑',
+                model: 'sonnet',
+                systemPrompt: `You are an expert academic research analyst. You are given the extracted text of a research paper. Read it carefully and produce a comprehensive high-level overview structured as follows:
+
+## Paper Overview
+**Title**: (extract from paper)
+**Authors**: (extract from paper)
+**Published**: (journal/venue and year if available)
+
+## In a Nutshell
+2-3 sentence plain-English summary of what this paper is about and why it matters.
+
+## Key Takeaways
+- Bullet list of the 3-5 most important findings or contributions
+- Include specific numbers, effect sizes, or statistics when reported
+
+## Methodology
+- Study design (qualitative, quantitative, mixed methods)
+- Data sources, sample size, time period
+- Key analytical methods used
+
+## What's New
+What this paper contributes beyond existing literature. What gap does it fill?
+
+## Limitations & Caveats
+Key limitations to keep in mind — both those the authors acknowledge and any you identify.
+
+## Strength Assessment
+Rate the paper on:
+- **Methodological rigor**: Strong / Adequate / Weak
+- **Evidence quality**: Strong / Adequate / Weak
+- **Practical relevance**: High / Medium / Low
+
+Brief justification for each rating.
+
+Rules:
+- Only report what is explicitly stated in the paper. Do NOT invent facts.
+- If a section cannot be determined from the text, say "[Not found in paper]".
+- Write for an educated reader who hasn't read the paper.
+- Be concise and clear. No jargon without explanation.`,
+            },
+            {
                 id: 'slr-screener',
                 name: 'SLR Screener',
                 role: 'Step 1 — Triage articles: Include / Maybe / Exclude / Background based on whether a specific CG mechanism drives an ESG outcome (or CG moderates ESG→FP).',
@@ -198,6 +243,15 @@ Format as a clear, professional document that any team member can understand.`,
                     { agentId: 'bug-detector' },
                     { agentId: 'improvement-suggester' },
                     { agentId: 'report-generator' },
+                ],
+            },
+            {
+                id: 'kristen-research-paper-insights',
+                name: 'Kristen — Research Paper Insights',
+                description: 'Upload a research paper PDF and get a high-level overview powered by Claude',
+                icon: '📑',
+                steps: [
+                    { agentId: 'paper-insights' },
                 ],
             },
             {
