@@ -46,15 +46,23 @@ export function Header({
                 </div>
 
                 <div className="header__input-group">
-                    <label htmlFor="workflow-input">Input</label>
-                    <input
-                        id="workflow-input"
-                        type="text"
-                        placeholder="Enter your task or question..."
-                        value={input}
-                        onChange={(e) => onInputChange(e.target.value)}
-                        disabled={isRunning}
-                    />
+                    {selectedWorkflow === 'slr-brain' ? (
+                        <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '0 16px' }}>
+                            Use the dropzone below to upload articles.
+                        </div>
+                    ) : (
+                        <>
+                            <label htmlFor="workflow-input">Input</label>
+                            <input
+                                id="workflow-input"
+                                type="text"
+                                placeholder="Enter your task or question..."
+                                value={input}
+                                onChange={(e) => onInputChange(e.target.value)}
+                                disabled={isRunning}
+                            />
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -79,14 +87,16 @@ export function Header({
                                 ↺ Reset
                             </button>
                         )}
-                        <button
-                            className="btn btn-primary"
-                            onClick={onRun}
-                            disabled={!selectedWorkflow}
-                            id="btn-run"
-                        >
-                            ▶ Run Workflow
-                        </button>
+                        {selectedWorkflow !== 'slr-brain' && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={onRun}
+                                disabled={!selectedWorkflow}
+                                id="btn-run"
+                            >
+                                ▶ Run Workflow
+                            </button>
+                        )}
                     </>
                 )}
             </div>

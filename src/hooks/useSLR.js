@@ -1,0 +1,128 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+const API_BASE = '/api';
+
+export function useSLR() {
+    const [batchId, setBatchId] = useState(null);
+    const [uploadStats, setUploadStats] = useState(null);
+    const [jobId, setJobId] = useState(null);
+    const [jobStatus, setJobStatus] = useState('idle'); // idle, starting, screening, done, error
+    const [progress, setProgress] = useState(0);
+    const [total, setTotal] = useState(0);
+    const [results, setResults] = useState([]);
+    const [dedups, setDedups] = useState(null);
+
+    // Live feed from websocket
+    const [liveFeed, setLiveFeed] = useState({});
+
+    const wsRef = useRef(null);
+
+    const connectWs = useCallback(() => {
+        if (wsRef.current) return;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.hostname}:3001/ws`;
+
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            if (msg.jobId !== jobId && msg.type !== 'init') return;
+
+            if (msg.type === 'slr:start') {
+                setJobStatus('screening');
+                setTotal(msg.total);
+                setDedups(msg.dedup);
+            } else if (msg.type === 'slr:progress') {
+                setProgress(msg.progress);
+            } else if (msg.type === 'slr:item_step') {
+                setLiveFeed(prev => ({
+                    ...prev,
+                    [msg.index]: {
+                        ...(prev[msg.index] || {}),
+                        [msg.step]: { status: msg.status, result: msg.result }
+                    }
+                }));
+            } else if (msg.type === 'slr:done') {
+                setJobStatus('done');
+                setResults(msg.results || []);
+            }
+        };
+
+        ws.onclose = () => { wsRef.current = null; };
+    }, [jobId]);
+
+    useEffect(() => {
+        if (jobId && jobStatus !== 'done') {
+            connectWs();
+
+            // Fallback polling just in case WS drops
+            const timer = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/slr/status/${jobId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setJobStatus(data.status);
+                        setProgress(data.progress);
+                        setTotal(data.total);
+                        if (data.results) setResults(data.results);
+                    }
+                } catch (e) { }
+            }, 3000);
+            return () => clearInterval(timer);
+        }
+    }, [jobId, jobStatus, connectWs]);
+
+    const uploadFiles = async (files) => {
+        const formData = new FormData();
+        Array.from(files).forEach(f => formData.append('files', f));
+
+        const res = await fetch(`${API_BASE}/slr/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setBatchId(data.batchId);
+            setUploadStats(data);
+        } else {
+            throw new Error(data.error || 'Upload failed');
+        }
+    };
+
+    const startRun = async (maxArticles) => {
+        if (!batchId) return;
+        const res = await fetch(`${API_BASE}/slr/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ batchId, maxArticles })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setJobId(data.jobId);
+            setJobStatus('starting');
+            setLiveFeed({});
+            setResults([]);
+            setProgress(0);
+        } else {
+            throw new Error(data.error || 'Run failed');
+        }
+    };
+
+    const reset = () => {
+        setBatchId(null);
+        setUploadStats(null);
+        setJobId(null);
+        setJobStatus('idle');
+        setProgress(0);
+        setTotal(0);
+        setResults([]);
+        setDedups(null);
+        setLiveFeed({});
+    };
+
+    return {
+        uploadFiles, startRun, reset,
+        batchId, uploadStats, jobId, jobStatus, progress, total, results, dedups, liveFeed
+    };
+}

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PipelineView } from './components/PipelineView';
+import { SLRPanel } from './components/SLRPanel';
 import { LogStream } from './components/LogStream';
 import { AgentEditor } from './components/AgentEditor';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -70,15 +71,20 @@ function App() {
       />
 
       <div className="app__body">
-        <PipelineView
-          workflow={selectedWorkflow}
-          agents={agents}
-          agentStatuses={agentStatuses}
-          agentOutputs={agentOutputs}
-          onAgentClick={handleAgentClick}
-        />
-
-        <LogStream logs={logs} agents={agents} />
+        {selectedWorkflowId === 'slr-brain' || selectedWorkflow?.id === 'slr-brain' ? (
+          <SLRPanel />
+        ) : (
+          <>
+            <PipelineView
+              workflow={selectedWorkflow}
+              agents={agents}
+              agentStatuses={agentStatuses}
+              agentOutputs={agentOutputs}
+              onAgentClick={handleAgentClick}
+            />
+            <LogStream logs={logs} agents={agents} />
+          </>
+        )}
       </div>
 
       {editingAgent && (

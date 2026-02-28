@@ -1,0 +1,69 @@
+.step-output {
+    padding: 10px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.so-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.text-muted { color: var(--text-muted); }
+.text-error { color: var(--accent-red); }
+
+.reasoning {
+    font-style: italic;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    border-left: 2px solid var(--border-light);
+    padding-left: 8px;
+}
+
+.confidence-score {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.chip-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.chip-purple { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+.chip-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.chip-neutral { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+.chip-outline { border: 1px solid var(--border-light); color: var(--text-secondary); }
+
+.badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
+.badge-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+.badge-primary { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
+.badge-neutral { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-color: rgba(100, 116, 139, 0.4); }
+
+.mt-1 { margin-top: 4px; }
+.mb-1 { margin-bottom: 4px; }
+.sub-detail { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+.step-output-raw {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    max-height: 150px;
+    overflow-y: auto;
+    color: var(--text-secondary);
+}

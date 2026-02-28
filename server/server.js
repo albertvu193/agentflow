@@ -5,7 +5,9 @@ import cors from 'cors';
 import { agentsRouter } from './routes/agents.js';
 import { workflowsRouter } from './routes/workflows.js';
 import { memoryRouter } from './routes/memory.js';
+import { slrRouter } from './routes/slrRoutes.js';
 import { WorkflowEngine } from './services/workflowEngine.js';
+import { SLRPipeline } from './services/slrPipeline.js';
 import { MemoryManager } from './services/memoryManager.js';
 
 const app = express();
@@ -18,15 +20,18 @@ app.use(express.json());
 // Initialize services
 const memoryManager = new MemoryManager();
 const workflowEngine = new WorkflowEngine(memoryManager, wss);
+const slrPipeline = new SLRPipeline(memoryManager, wss, workflowEngine.agentRunner);
 
 // Make services available to routes
 app.locals.memoryManager = memoryManager;
 app.locals.workflowEngine = workflowEngine;
+app.locals.slrPipeline = slrPipeline;
 
 // Routes
 app.use('/api/agents', agentsRouter);
 app.use('/api/workflows', workflowsRouter);
 app.use('/api/memory', memoryRouter);
+app.use('/api/slr', slrRouter);
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
