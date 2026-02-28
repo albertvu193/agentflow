@@ -1,11 +1,19 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './KristenPanel.css';
 import { useKristen } from '../hooks/useKristen';
 
 export function KristenPanel() {
     const kristen = useKristen();
     const fileInputRef = useRef(null);
+    const streamEndRef = useRef(null);
     const [dragOver, setDragOver] = useState(false);
+
+    // Auto-scroll to bottom as new content streams in
+    useEffect(() => {
+        if (kristen.streamedText && streamEndRef.current) {
+            streamEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, [kristen.streamedText]);
 
     const handleFile = async (file) => {
         if (!file) return;
@@ -38,7 +46,7 @@ export function KristenPanel() {
         }
     };
 
-    // Done state — show the overview
+    // Done state — show the final overview
     if (kristen.status === 'done' && kristen.result) {
         return (
             <div className="kristen-panel fade-in">
@@ -108,15 +116,49 @@ export function KristenPanel() {
                 </div>
             )}
 
-            {/* Running state */}
+            {/* Running state — show live streaming progress */}
             {kristen.status === 'running' && (
-                <div className="kristen-running-card">
-                    <div className="kristen-spinner-container">
-                        <div className="kristen-spinner" />
-                        <h3>Claude is reading the paper...</h3>
-                        <p className="text-secondary">Extracting structure, findings, methodology, and synthesizing an overview.</p>
-                        <p className="text-muted text-sm" style={{ marginTop: '8px' }}>This may take a minute for longer papers.</p>
+                <div className="kristen-streaming-container">
+                    {/* Progress header */}
+                    <div className="kristen-stream-header">
+                        <div className="kristen-stream-status">
+                            <div className="kristen-pulse" />
+                            <span>Claude is reading the paper...</span>
+                        </div>
+                        <div className="kristen-stream-filename">{kristen.uploadInfo?.filename}</div>
                     </div>
+
+                    {/* Live sections */}
+                    {kristen.streamedText ? (
+                        <div className="kristen-stream-body">
+                            {parseSections(kristen.streamedText).map((section, i, arr) => (
+                                <div
+                                    key={i}
+                                    className={`kristen-stream-section ${i === arr.length - 1 ? 'kristen-stream-section--active' : 'kristen-stream-section--done'}`}
+                                >
+                                    {section.title && (
+                                        <div className="kristen-section-header">
+                                            <span className={`kristen-section-check ${i < arr.length - 1 ? 'done' : 'active'}`}>
+                                                {i < arr.length - 1 ? '✓' : '●'}
+                                            </span>
+                                            <h3>{section.title}</h3>
+                                        </div>
+                                    )}
+                                    <div
+                                        className="kristen-section-body"
+                                        dangerouslySetInnerHTML={{ __html: formatMarkdown(section.content) }}
+                                    />
+                                </div>
+                            ))}
+                            <div ref={streamEndRef} />
+                            <div className="kristen-stream-cursor" />
+                        </div>
+                    ) : (
+                        <div className="kristen-waiting">
+                            <div className="kristen-spinner" />
+                            <p className="text-muted">Connecting to Claude...</p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -130,6 +172,39 @@ export function KristenPanel() {
             )}
         </div>
     );
+}
+
+/**
+ * Split streamed text into sections based on ## headers
+ */
+function parseSections(text) {
+    if (!text) return [];
+
+    const sections = [];
+    const parts = text.split(/^(## .+)$/gm);
+
+    let currentTitle = null;
+    let currentContent = '';
+
+    for (const part of parts) {
+        if (part.startsWith('## ')) {
+            // Save previous section
+            if (currentTitle || currentContent.trim()) {
+                sections.push({ title: currentTitle, content: currentContent.trim() });
+            }
+            currentTitle = part.replace('## ', '');
+            currentContent = '';
+        } else {
+            currentContent += part;
+        }
+    }
+
+    // Don't forget the last section
+    if (currentTitle || currentContent.trim()) {
+        sections.push({ title: currentTitle, content: currentContent.trim() });
+    }
+
+    return sections;
 }
 
 // Simple markdown-to-HTML converter for the result display

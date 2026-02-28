@@ -134,7 +134,7 @@ Format as a clear, professional document that any team member can understand.`,
                 name: 'Paper Insights',
                 role: 'Read a research paper and produce a comprehensive high-level overview',
                 icon: '📑',
-                model: 'sonnet',
+                model: 'haiku',
                 systemPrompt: `You are an expert academic research analyst. You are given the extracted text of a research paper. Read it carefully and produce a comprehensive high-level overview structured as follows:
 
 ## Paper Overview

@@ -64,11 +64,14 @@ kristenRouter.post('/run', async (req, res) => {
     req.app.locals.kristenJobs = req.app.locals.kristenJobs || new Map();
     req.app.locals.kristenJobs.set(jobId, { status: 'running', result: null });
 
-    // Run asynchronously
+    // Run asynchronously with streaming
     (async () => {
         try {
             const agent = memoryManager.getAgent('paper-insights');
             if (!agent) throw new Error('paper-insights agent not found');
+
+            // Force haiku for speed
+            const streamAgent = { ...agent, model: 'haiku' };
 
             broadcast({
                 type: 'kristen:start',
@@ -78,7 +81,22 @@ kristenRouter.post('/run', async (req, res) => {
             });
 
             const input = `Analyze this research paper (${paper.filename}, ${paper.pages} pages):\n\n${paper.text}`;
-            const result = await agentRunner.runAgent(agent, input, jobId);
+
+            const result = await agentRunner.runAgentStreaming(
+                streamAgent,
+                input,
+                jobId,
+                (chunk, accumulated) => {
+                    // Broadcast each text chunk for live display
+                    broadcast({
+                        type: 'kristen:chunk',
+                        jobId,
+                        chunk,
+                        accumulated,
+                        timestamp: new Date().toISOString(),
+                    });
+                }
+            );
 
             req.app.locals.kristenJobs.get(jobId).status = 'done';
             req.app.locals.kristenJobs.get(jobId).result = result;
