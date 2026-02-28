@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PipelineView } from './components/PipelineView';
 import { SLRPanel } from './components/SLRPanel';
+import { KristenPanel } from './components/KristenPanel';
 import { LogStream } from './components/LogStream';
 import { AgentEditor } from './components/AgentEditor';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -73,6 +74,8 @@ function App() {
       <div className="app__body">
         {selectedWorkflowId === 'slr-brain' || selectedWorkflow?.id === 'slr-brain' ? (
           <SLRPanel />
+        ) : selectedWorkflowId === 'kristen-research-paper-insights' || selectedWorkflow?.id === 'kristen-research-paper-insights' ? (
+          <KristenPanel />
         ) : (
           <>
             <PipelineView

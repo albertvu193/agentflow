@@ -35,14 +35,13 @@ export class MemoryManager {
             const agents = JSON.parse(fs.readFileSync(agentsFile, 'utf-8'));
             let changed = false;
             for (const defaultAgent of defaults.agents) {
-                if (!defaultAgent.id.startsWith('slr-')) continue;
                 const existing = agents.find(a => a.id === defaultAgent.id);
-                if (existing && existing.systemPrompt === PLACEHOLDER) {
+                if (existing && defaultAgent.id.startsWith('slr-') && existing.systemPrompt === PLACEHOLDER) {
                     // Upgrade stale placeholder with real prompt
                     Object.assign(existing, { systemPrompt: defaultAgent.systemPrompt, role: defaultAgent.role, _slrStep: defaultAgent._slrStep });
                     changed = true;
                 } else if (!existing) {
-                    // Agent was deleted — re-add it
+                    // Agent missing from persisted file — add it
                     agents.push(defaultAgent);
                     changed = true;
                 }

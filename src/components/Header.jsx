@@ -14,6 +14,7 @@ export function Header({
     onInputChange,
 }) {
     const isRunning = workflowStatus === 'running';
+    const currentWorkflow = workflows.find((w) => w.id === selectedWorkflow);
 
     return (
         <header className="header" id="app-header">
@@ -49,6 +50,10 @@ export function Header({
                     {selectedWorkflow === 'slr-brain' ? (
                         <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '0 16px' }}>
                             Use the dropzone below to upload articles.
+                        </div>
+                    ) : selectedWorkflow === 'kristen-research-paper-insights' ? (
+                        <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '0 16px' }}>
+                            Upload a PDF below to generate insights.
                         </div>
                     ) : (
                         <>
@@ -87,7 +92,7 @@ export function Header({
                                 ↺ Reset
                             </button>
                         )}
-                        {selectedWorkflow !== 'slr-brain' && (
+                        {selectedWorkflow !== 'slr-brain' && selectedWorkflow !== 'kristen-research-paper-insights' && (
                             <button
                                 className="btn btn-primary"
                                 onClick={onRun}
