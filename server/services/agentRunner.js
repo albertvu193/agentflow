@@ -169,6 +169,106 @@ export class AgentRunner {
         });
     }
 
+    /**
+     * Run an agent with streaming — broadcasts text chunks as they arrive.
+     * Does NOT use --output-format json so stdout streams in real-time.
+     */
+    async runAgentStreaming(agent, input, runId, onChunk) {
+        const agentId = agent.id;
+        const memoryContext = this.memoryManager.getMemoryContext(agentId);
+        const fullPrompt = this._buildPrompt(agent, input, memoryContext);
+
+        this.broadcast({
+            type: 'agent:status',
+            runId,
+            agentId,
+            status: 'working',
+            action: 'Starting...',
+            timestamp: new Date().toISOString(),
+        });
+
+        return new Promise((resolve, reject) => {
+            const args = [
+                '-p',
+                '--system-prompt', agent.systemPrompt,
+                '--no-session-persistence',
+            ];
+
+            if (agent.model) {
+                args.push('--model', agent.model);
+            }
+
+            const child = spawn('claude', args, {
+                env: { ...process.env },
+                stdio: ['pipe', 'pipe', 'pipe'],
+            });
+
+            this.activeProcesses.set(`${runId}:${agentId}`, child);
+
+            let accumulated = '';
+
+            child.stdin.write(fullPrompt);
+            child.stdin.end();
+
+            child.stdout.on('data', (data) => {
+                const chunk = data.toString();
+                accumulated += chunk;
+                if (onChunk) onChunk(chunk, accumulated);
+            });
+
+            child.stderr.on('data', (data) => {
+                this.broadcast({
+                    type: 'agent:log',
+                    runId,
+                    agentId,
+                    message: data.toString().trim(),
+                    level: 'info',
+                    timestamp: new Date().toISOString(),
+                });
+            });
+
+            child.on('close', (code) => {
+                this.activeProcesses.delete(`${runId}:${agentId}`);
+
+                if (code !== 0) {
+                    this.broadcast({
+                        type: 'agent:status',
+                        runId,
+                        agentId,
+                        status: 'error',
+                        action: `Exited with code ${code}`,
+                        timestamp: new Date().toISOString(),
+                    });
+                    reject(new Error(`Process exited with code ${code}`));
+                    return;
+                }
+
+                this.memoryManager.saveRunResult(agentId, {
+                    input,
+                    output: accumulated,
+                    timestamp: new Date().toISOString(),
+                    runId,
+                });
+
+                this.broadcast({
+                    type: 'agent:status',
+                    runId,
+                    agentId,
+                    status: 'done',
+                    action: 'Completed',
+                    timestamp: new Date().toISOString(),
+                });
+
+                resolve(accumulated);
+            });
+
+            child.on('error', (err) => {
+                this.activeProcesses.delete(`${runId}:${agentId}`);
+                reject(err);
+            });
+        });
+    }
+
     _buildPrompt(agent, input, memoryContext) {
         let prompt = '';
 

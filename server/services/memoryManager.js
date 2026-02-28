@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { getDefaults } from '../data/defaults.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(process.env.HOME, '.agent-viz');
+const DATA_DIR = path.join(process.env.HOME || process.env.USERPROFILE, '.agent-viz');
 
 function ensureDir(dir) {
     if (!fs.existsSync(dir)) {
