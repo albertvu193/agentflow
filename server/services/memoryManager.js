@@ -28,9 +28,41 @@ export class MemoryManager {
 
         if (!fs.existsSync(agentsFile)) {
             fs.writeFileSync(agentsFile, JSON.stringify(defaults.agents, null, 2));
+        } else {
+            // Migration: update SLR agents that still carry the old placeholder prompt.
+            // Agents that the user has edited (longer/different prompt) are left untouched.
+            const PLACEHOLDER = 'Internal system prompt handled by SLR Pipeline.';
+            const agents = JSON.parse(fs.readFileSync(agentsFile, 'utf-8'));
+            let changed = false;
+            for (const defaultAgent of defaults.agents) {
+                if (!defaultAgent.id.startsWith('slr-')) continue;
+                const existing = agents.find(a => a.id === defaultAgent.id);
+                if (existing && existing.systemPrompt === PLACEHOLDER) {
+                    // Upgrade stale placeholder with real prompt
+                    Object.assign(existing, { systemPrompt: defaultAgent.systemPrompt, role: defaultAgent.role, _slrStep: defaultAgent._slrStep });
+                    changed = true;
+                } else if (!existing) {
+                    // Agent was deleted — re-add it
+                    agents.push(defaultAgent);
+                    changed = true;
+                }
+            }
+            if (changed) fs.writeFileSync(agentsFile, JSON.stringify(agents, null, 2));
         }
+
         if (!fs.existsSync(workflowsFile)) {
             fs.writeFileSync(workflowsFile, JSON.stringify(defaults.workflows, null, 2));
+        } else {
+            // Migration: inject any default workflows that are missing from the persisted file.
+            const workflows = JSON.parse(fs.readFileSync(workflowsFile, 'utf-8'));
+            let changed = false;
+            for (const dw of defaults.workflows) {
+                if (!workflows.find(w => w.id === dw.id)) {
+                    workflows.push(dw);
+                    changed = true;
+                }
+            }
+            if (changed) fs.writeFileSync(workflowsFile, JSON.stringify(workflows, null, 2));
         }
         if (!fs.existsSync(memoryFile)) {
             fs.writeFileSync(memoryFile, JSON.stringify({}, null, 2));

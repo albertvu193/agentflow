@@ -184,3 +184,146 @@
     text-align: center;
     color: var(--text-muted);
 }
+
+/* ── Stats grid ─ now 5 columns to include Maybe */
+.stats-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+}
+
+.stat-card.maybe h3 {
+    color: #a78bfa;
+}
+
+.stat-hint {
+    font-size: 10px;
+    display: block;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+/* ── Maybe filter tab ───────────────────────────── */
+.tab-maybe.active {
+    border-color: #7c3aed;
+    color: #a78bfa;
+}
+
+/* ── Status badges ──────────────────────────────── */
+.status-include {
+    color: #34d399;
+}
+
+.status-maybe {
+    color: #a78bfa;
+}
+
+.status-exclude {
+    color: #f87171;
+}
+
+.status-background {
+    color: #fbbf24;
+}
+
+.status-unknown {
+    color: var(--text-muted);
+}
+
+/* ── Source badge ───────────────────────────────── */
+.source-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+    margin-left: 6px;
+    color: var(--text-muted);
+    vertical-align: middle;
+}
+
+/* ── Actions cell ───────────────────────────────── */
+.actions-cell {
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.btn-teach {
+    background: rgba(124, 58, 237, 0.12) !important;
+    border-color: rgba(124, 58, 237, 0.3) !important;
+    color: #c4b5fd !important;
+    font-size: 11px !important;
+}
+
+.btn-teach:hover {
+    background: rgba(124, 58, 237, 0.25) !important;
+}
+
+/* ── Modal ──────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg, 12px);
+    padding: 28px;
+    width: 480px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-box h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.modal-article-title {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    color: var(--text-color);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 12px;
+}
+
+.modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.input-select,
+.input-text {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--text-color);
+    font-size: 13px;
+    width: 100%;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.text-xs {
+    font-size: 11px;
+}

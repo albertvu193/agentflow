@@ -1,3 +1,11 @@
+import {
+    slrScreenerPrompt,
+    slrPathClassifierPrompt,
+    slrCgTaggerPrompt,
+    slrEsgTaggerPrompt,
+    slrMetaScorerPrompt
+} from './slrPrompts.js';
+
 export function getDefaults() {
     return {
         agents: [
@@ -124,42 +132,47 @@ Format as a clear, professional document that any team member can understand.`,
             {
                 id: 'slr-screener',
                 name: 'SLR Screener',
-                role: 'Article screening',
+                role: 'Step 1 — Triage articles: Include / Maybe / Exclude / Background based on whether a specific CG mechanism drives an ESG outcome (or CG moderates ESG→FP).',
                 icon: '🔍',
                 model: 'sonnet',
-                systemPrompt: 'Internal system prompt handled by SLR Pipeline.',
+                systemPrompt: slrScreenerPrompt,
+                _slrStep: 'screener',
             },
             {
                 id: 'slr-path-classifier',
                 name: 'Path Classifier',
-                role: 'Causal path classification',
+                role: 'Step 2 — Classify the causal pathway: CG→ESG only (Path A), both CG→ESG and ESG→FP (Both A+B), or ESG→FP moderated by CG (Path B).',
                 icon: '🧭',
                 model: 'sonnet',
-                systemPrompt: 'Internal system prompt handled by SLR Pipeline.',
+                systemPrompt: slrPathClassifierPrompt,
+                _slrStep: 'path',
             },
             {
                 id: 'slr-cg-tagger',
                 name: 'CG Tagger',
-                role: 'CG mechanism tagging',
+                role: 'Step 3 — Tag which specific CG mechanisms are empirically tested (Board structure, Board diversity, Ownership, etc.) and their granular detail codes.',
                 icon: '🏛️',
                 model: 'sonnet',
-                systemPrompt: 'Internal system prompt handled by SLR Pipeline.',
+                systemPrompt: slrCgTaggerPrompt,
+                _slrStep: 'cg',
             },
             {
                 id: 'slr-esg-tagger',
                 name: 'ESG Tagger',
-                role: 'ESG outcome tagging',
+                role: 'Step 4 — Tag which ESG outcomes are measured (Disclosure, Performance Rating, CSR, E/S/G pillar, etc.) and the measurement approach (Refinitiv, hand-coded index, etc.).',
                 icon: '🌱',
                 model: 'sonnet',
-                systemPrompt: 'Internal system prompt handled by SLR Pipeline.',
+                systemPrompt: slrEsgTaggerPrompt,
+                _slrStep: 'esg',
             },
             {
                 id: 'slr-meta-scorer',
                 name: 'Meta Scorer',
-                role: 'Meta-analysis scoring',
+                role: 'Step 5 — Score meta-analysis suitability (High/Medium/Low) and extract study design, estimation methods, endogeneity treatment, theory used, and context tags.',
                 icon: '📊',
                 model: 'sonnet',
-                systemPrompt: 'Internal system prompt handled by SLR Pipeline.',
+                systemPrompt: slrMetaScorerPrompt,
+                _slrStep: 'meta',
             },
         ],
         workflows: [

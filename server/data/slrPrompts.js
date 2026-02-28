@@ -649,3 +649,10 @@ Expected output: {"meta_potential":"Medium","confidence":0.8,"reasoning":"Modera
   };
   return prompts[stepName] || "";
 };
+
+// Named exports for direct seeding of agent defaults
+export const slrScreenerPrompt = (() => { const p = {}; getSLRPrompt; return getSLRPrompt('screener'); })();
+export const slrPathClassifierPrompt = getSLRPrompt('path');
+export const slrCgTaggerPrompt = getSLRPrompt('cg');
+export const slrEsgTaggerPrompt = getSLRPrompt('esg');
+export const slrMetaScorerPrompt = getSLRPrompt('meta');
