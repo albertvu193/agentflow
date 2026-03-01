@@ -12,6 +12,7 @@ export function Header({
     onOpenEditor,
     input,
     onInputChange,
+    onOpenResearch,
 }) {
     const isRunning = workflowStatus === 'running';
     const currentWorkflow = workflows.find((w) => w.id === selectedWorkflow);
@@ -72,6 +73,15 @@ export function Header({
             </div>
 
             <div className="header__right">
+                {onOpenResearch && (
+                    <button
+                        className="btn header__research-btn btn-sm"
+                        onClick={onOpenResearch}
+                        id="btn-research-hub"
+                    >
+                        Research Hub
+                    </button>
+                )}
                 <button
                     className="btn btn-ghost btn-sm"
                     onClick={onOpenEditor}

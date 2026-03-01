@@ -1,0 +1,124 @@
+/* ─── Literature Review ───────────────────────────────────────────────── */
+
+/* Source cards */
+.lr__sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.lr__source-card h4 {
+  margin-bottom: 4px;
+}
+
+/* Batch section */
+.lr__run-controls {
+  border-top: 1px solid var(--r-border-light);
+  padding-top: 16px;
+}
+
+.lr__max-input {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Feed items */
+.lr__feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lr__feed-item {
+  border-left: 3px solid var(--r-accent);
+}
+
+.lr__feed-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lr__feed-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lr__feed-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--r-border);
+  background: var(--r-bg-card);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.lr__feed-step.done .lr__feed-step-dot {
+  background: var(--r-success);
+  border-color: var(--r-success);
+}
+
+.lr__feed-step-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--r-text-muted);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.lr__feed-step.done .lr__feed-step-name {
+  color: var(--r-text-secondary);
+}
+
+/* Expanded details */
+.lr__expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lr__expanded-section h4 {
+  margin-bottom: 6px;
+  color: var(--r-text);
+}
+
+.lr__expanded-section p {
+  color: var(--r-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lr__expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.lr__expanded-step h4 {
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--r-text-muted);
+}
+
+.lr__step-json {
+  font-family: var(--r-font-mono);
+  font-size: 11px;
+  background: var(--r-bg-card);
+  border: 1px solid var(--r-border);
+  border-radius: var(--r-radius-sm);
+  padding: 10px;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--r-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
