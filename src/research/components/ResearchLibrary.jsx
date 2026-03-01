@@ -148,6 +148,14 @@ export function ResearchLibrary({ slr, kristen }) {
 
 /* ─── SLR Summary Table ───────────────────────────────────────────────── */
 function SLRSummaryTable({ results }) {
+  const csvEscape = (val) => {
+    const s = String(val ?? '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
   const exportCsv = () => {
     let csv = 'Title,Status,Confidence,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
     results.forEach(r => {
@@ -157,8 +165,15 @@ function SLRSummaryTable({ results }) {
       const cg = r.step_results?.cg || {};
       const esg = r.step_results?.esg || {};
       const meta = r.step_results?.meta || {};
-      const title = `"${(row.Title || row.title || '').replace(/"/g, '""')}"`;
-      csv += `${title},${screen.status || ''},${Math.round((screen.confidence || 0) * 100)}%,${path.path || ''},"${(cg.cg_mechanisms || []).join('; ')}","${(esg.esg_outcomes || []).join('; ')}",${meta.meta_potential || ''}\n`;
+      csv += [
+        csvEscape(row.Title || row.title || ''),
+        csvEscape(screen.status || ''),
+        `${Math.round((screen.confidence || 0) * 100)}%`,
+        csvEscape(path.path || ''),
+        csvEscape((cg.cg_mechanisms || []).join('; ')),
+        csvEscape((esg.esg_outcomes || []).join('; ')),
+        csvEscape(meta.meta_potential || ''),
+      ].join(',') + '\n';
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

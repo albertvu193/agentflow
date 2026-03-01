@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ResearchSidebar } from './components/ResearchSidebar';
 import { ResearchDashboard } from './components/ResearchDashboard';
 import { PaperAnalysis } from './components/PaperAnalysis';
@@ -20,19 +20,31 @@ export function ResearchApp({ onBack }) {
   const [isConnected, setIsConnected] = useState(false);
   const kristen = useKristen();
   const slr = useSLR();
+  const reconnectTimer = useRef(null);
 
-  // Check WebSocket connectivity
+  // WebSocket connectivity with auto-reconnect
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const wsHost = isDev ? 'localhost:3001' : window.location.host;
-    const ws = new WebSocket(`${protocol}//${wsHost}/ws`);
+    let ws = null;
 
-    ws.onopen = () => setIsConnected(true);
-    ws.onclose = () => setIsConnected(false);
-    ws.onerror = () => setIsConnected(false);
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const wsHost = isDev ? 'localhost:3001' : window.location.host;
+      ws = new WebSocket(`${protocol}//${wsHost}/ws`);
 
-    return () => ws.close();
+      ws.onopen = () => setIsConnected(true);
+      ws.onclose = () => {
+        setIsConnected(false);
+        reconnectTimer.current = setTimeout(connect, 3000);
+      };
+      ws.onerror = () => setIsConnected(false);
+    }
+
+    connect();
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      if (ws) ws.close();
+    };
   }, []);
 
   const navigateTo = useCallback((page) => {

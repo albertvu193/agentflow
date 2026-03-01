@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './LiteratureReview.css';
 
 export function LiteratureReview({ slr }) {
@@ -44,7 +44,11 @@ export function LiteratureReview({ slr }) {
         <div className="r-mt-2">
           <div
             className="r-dropzone"
+            role="button"
+            tabIndex={0}
+            aria-label="Upload bibliographic CSV or Excel files"
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
           >
             <div className="r-dropzone__icon">L</div>
             <h3>Upload Bibliographic Data</h3>
@@ -81,7 +85,7 @@ export function LiteratureReview({ slr }) {
           <div className="r-stat-grid r-mt-2">
             <div className="r-stat-card">
               <div className="r-stat-card__label">Files</div>
-              <div className="r-stat-card__value accent">{slr.uploadStats?.files.length}</div>
+              <div className="r-stat-card__value accent">{slr.uploadStats?.files?.length}</div>
             </div>
             <div className="r-stat-card">
               <div className="r-stat-card__label">Articles Found</div>
@@ -217,6 +221,14 @@ function SLRResultsView({ results, onReset, dedups }) {
   const [teachModal, setTeachModal] = useState(null);
   const [teachStatus, setTeachStatus] = useState(null);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!teachModal) return;
+    const handleEsc = (e) => { if (e.key === 'Escape') setTeachModal(null); };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [teachModal]);
+
   const total = results.length;
   const counts = { Include: 0, Maybe: 0, Exclude: 0, Background: 0 };
   results.forEach(r => {
@@ -230,6 +242,14 @@ function SLRResultsView({ results, onReset, dedups }) {
     return filter === 'All' || s === filter;
   });
 
+  const csvEscape = (val) => {
+    const s = String(val ?? '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
   const exportCsv = () => {
     let csv = 'Article ID,Title,Authors,Year,Journal,DOI,Screen Status,Exclusion Code,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
     filteredResults.forEach((r, idx) => {
@@ -239,10 +259,22 @@ function SLRResultsView({ results, onReset, dedups }) {
       const cg = r.step_results?.cg || {};
       const esg = r.step_results?.esg || {};
       const meta = r.step_results?.meta || {};
-      const title = `"${(row.Title || row.title || '').replace(/"/g, '""')}"`;
-      const cgStr = `"${(Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).join('; ')}"`;
-      const esgStr = `"${(Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).join('; ')}"`;
-      csv += `${idx + 1},${title},"${row.Authors || ''}",${row.Year || ''},"${row.Journal || ''}",${row.DOI || ''},${screen.status || ''},${screen.exclusion_code || ''},${path.path || ''},${cgStr},${esgStr},${meta.meta_potential || ''}\n`;
+      const cgStr = (Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).join('; ');
+      const esgStr = (Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).join('; ');
+      csv += [
+        idx + 1,
+        csvEscape(row.Title || row.title || ''),
+        csvEscape(row.Authors || ''),
+        csvEscape(row.Year || ''),
+        csvEscape(row.Journal || ''),
+        csvEscape(row.DOI || ''),
+        csvEscape(screen.status || ''),
+        csvEscape(screen.exclusion_code || ''),
+        csvEscape(path.path || ''),
+        csvEscape(cgStr),
+        csvEscape(esgStr),
+        csvEscape(meta.meta_potential || ''),
+      ].join(',') + '\n';
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -480,9 +512,9 @@ function SLRResultsView({ results, onReset, dedups }) {
       {/* Teach AI Modal */}
       {teachModal && (
         <div className="r-modal-overlay" onClick={() => setTeachModal(null)}>
-          <div className="r-modal" onClick={e => e.stopPropagation()}>
+          <div className="r-modal" role="dialog" aria-modal="true" aria-labelledby="teach-modal-title" onClick={e => e.stopPropagation()}>
             <div className="r-modal-header">
-              <h3>Correct & Teach AI</h3>
+              <h3 id="teach-modal-title">Correct & Teach AI</h3>
               <button className="r-btn r-btn-ghost r-btn-sm" onClick={() => setTeachModal(null)}>&times;</button>
             </div>
             <div className="r-modal-body">
@@ -539,5 +571,3 @@ function SLRResultsView({ results, onReset, dedups }) {
   );
 }
 
-// Need React for Fragment usage in JSX
-import React from 'react';

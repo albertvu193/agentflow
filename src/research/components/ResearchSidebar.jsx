@@ -26,7 +26,7 @@ export function ResearchSidebar({ currentPage, onNavigate, onBack }) {
       </div>
 
       {/* Navigation */}
-      <nav className="r-sidebar__nav">
+      <nav className="r-sidebar__nav" aria-label="Research Hub navigation">
         {Object.entries(sections).map(([section, items]) => (
           <div key={section} className="r-sidebar__section">
             <div className="r-sidebar__section-label">{section}</div>

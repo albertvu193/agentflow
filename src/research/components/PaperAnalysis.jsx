@@ -95,7 +95,11 @@ export function PaperAnalysis({ kristen }) {
         <div className="r-mt-2">
           <div
             className={`r-dropzone ${dragOver ? 'active' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload PDF research paper"
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
