@@ -143,8 +143,18 @@ export function LiteratureReview({ slr }) {
         </div>
       )}
 
+      {/* Error state */}
+      {slr.jobStatus === 'error' && (
+        <div className="r-alert r-alert-danger r-mt-2 r-slide-up">
+          <strong>Pipeline Error:</strong> {slr.error || 'An unexpected error occurred.'}
+          <div className="r-mt-1">
+            <button className="r-btn r-btn-sm r-btn-secondary" onClick={slr.reset}>Try Again</button>
+          </div>
+        </div>
+      )}
+
       {/* Running */}
-      {slr.jobStatus !== 'idle' && slr.jobStatus !== 'done' && (
+      {(slr.jobStatus === 'starting' || slr.jobStatus === 'screening') && (
         <div className="lr__running r-mt-2 r-slide-up">
           {/* Progress card */}
           <div className="lr__progress-card r-card r-card-padded">
@@ -161,10 +171,8 @@ export function LiteratureReview({ slr }) {
                 style={{ width: `${(slr.progress / slr.total) * 100 || 0}%` }}
               />
             </div>
-            {slr.dedups && (
-              <div className="r-alert r-alert-info r-mt-2">
-                Deduplication: Kept {slr.dedups.kept}, removed {slr.dedups.removed} duplicate(s).
-              </div>
+            {slr.dedups && slr.dedups.removed > 0 && (
+              <DedupDetails dedups={slr.dedups} />
             )}
           </div>
 
@@ -176,11 +184,16 @@ export function LiteratureReview({ slr }) {
 
               const steps = ['screen', 'path', 'cg', 'esg', 'meta'];
               const completedSteps = steps.filter(s => feed[s]);
+              const articleTitle = slr.articleTitles?.[idx];
 
               return (
                 <div key={idx} className="lr__feed-item r-card r-card-padded">
                   <div className="r-flex r-items-center r-justify-between r-mb-1">
-                    <h4>Article #{idx + 1}</h4>
+                    <h4>
+                      {articleTitle
+                        ? (articleTitle.length > 70 ? articleTitle.substring(0, 70) + '...' : articleTitle)
+                        : `Article #${idx + 1}`}
+                    </h4>
                     <span className="r-text-xs r-text-muted">
                       {completedSteps.length}/{steps.length} steps
                     </span>
@@ -205,6 +218,34 @@ export function LiteratureReview({ slr }) {
               );
             })}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Dedup Details (expandable) ──────────────────────────────────────── */
+function DedupDetails({ dedups }) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <div className="r-mt-2">
+      <div className="r-alert r-alert-info" style={{ cursor: 'pointer' }} onClick={() => setShowDetails(v => !v)}>
+        <strong>Deduplication:</strong> Kept {dedups.kept}, removed {dedups.removed} duplicate(s).
+        {dedups.details?.length > 0 && (
+          <span className="r-text-xs" style={{ marginLeft: 8 }}>
+            {showDetails ? 'Hide details' : 'Show details'}
+          </span>
+        )}
+      </div>
+      {showDetails && dedups.details?.length > 0 && (
+        <div className="lr__dedup-details r-mt-1">
+          {dedups.details.map((d, i) => (
+            <div key={i} className="lr__dedup-item">
+              <span className="r-text-sm">{d.title}</span>
+              <span className="r-chip r-text-xs">{d.reason}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -249,14 +290,19 @@ function SLRResultsView({ results, onReset, dedups }) {
   const [teachModal, setTeachModal] = useState(null);
   const [teachStatus, setTeachStatus] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortCol, setSortCol] = useState(null);  // null | 'title' | 'decision' | 'confidence' | 'path' | 'meta'
+  const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
   const [showStats, setShowStats] = useState(false);
 
-  // Close modal on Escape key
+  // Close modal on Escape key — use stopImmediatePropagation to prevent ResearchApp's handler
   useEffect(() => {
     if (!teachModal) return;
-    const handleEsc = (e) => { if (e.key === 'Escape') setTeachModal(null); };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        setTeachModal(null);
+      }
+    };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [teachModal]);
@@ -434,6 +480,12 @@ function SLRResultsView({ results, onReset, dedups }) {
     return `r-badge ${cls}`;
   };
 
+  const handleReset = () => {
+    if (window.confirm('Start a new batch? Current results will be cleared.')) {
+      onReset();
+    }
+  };
+
   return (
     <div className="lr r-fade-in">
       {/* Header */}
@@ -443,16 +495,14 @@ function SLRResultsView({ results, onReset, dedups }) {
           <p className="r-text-secondary r-text-sm">{total} articles processed</p>
         </div>
         <div className="r-flex r-gap-1">
-          <button className="r-btn r-btn-secondary" onClick={onReset}>New Batch</button>
+          <button className="r-btn r-btn-secondary" onClick={handleReset}>New Batch</button>
           <button className="r-btn r-btn-primary" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
 
       {/* Dedup notice */}
       {dedups?.removed > 0 && (
-        <div className="r-alert r-alert-info r-mt-2">
-          <strong>Deduplication:</strong> Removed {dedups.removed} duplicate(s) before processing (Web of Science preferred over Scopus).
-        </div>
+        <DedupDetails dedups={dedups} />
       )}
 
       {/* Stats */}
@@ -755,4 +805,3 @@ function SLRResultsView({ results, onReset, dedups }) {
     </div>
   );
 }
-

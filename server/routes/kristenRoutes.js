@@ -52,7 +52,7 @@ kristenRouter.post('/upload', upload.single('file'), async (req, res) => {
 
 // Run the insights pipeline on an uploaded paper
 kristenRouter.post('/run', async (req, res) => {
-    const { paperId } = req.body;
+    const { paperId, model } = req.body;
     const paper = req.app.locals.kristenPapers?.get(paperId);
     if (!paper) return res.status(404).json({ error: 'Paper not found' });
 
@@ -72,8 +72,8 @@ kristenRouter.post('/run', async (req, res) => {
             const agent = memoryManager.getAgent('paper-insights');
             if (!agent) throw new Error('paper-insights agent not found');
 
-            // Force haiku for speed
-            const streamAgent = { ...agent, model: 'haiku' };
+            // Use client-selected model, defaulting to haiku for speed
+            const streamAgent = { ...agent, model: model || 'haiku' };
 
             broadcast({
                 type: 'kristen:start',

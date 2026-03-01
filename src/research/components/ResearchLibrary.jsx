@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { formatMarkdown } from '../utils/formatMarkdown';
 import './ResearchLibrary.css';
 
 export function ResearchLibrary({ slr, kristen }) {
@@ -103,7 +104,7 @@ export function ResearchLibrary({ slr, kristen }) {
       {activeTab === 'slr' && (
         <div className="r-slide-up">
           {hasSlrResults ? (
-            <SLRSummaryTable results={slr.results} />
+            <SLRLibraryTable results={slr.results} />
           ) : (
             <div className="r-empty">
               <div className="r-empty__icon">L</div>
@@ -118,21 +119,7 @@ export function ResearchLibrary({ slr, kristen }) {
       {activeTab === 'papers' && (
         <div className="r-slide-up">
           {hasKristenResult ? (
-            <div className="r-card r-card-padded">
-              <div className="r-flex r-items-center r-justify-between r-mb-2">
-                <div>
-                  <h3>{kristen.uploadInfo?.filename || 'Research Paper'}</h3>
-                  <p className="r-text-xs r-text-muted r-mt-1">
-                    {kristen.uploadInfo?.pages} pages &middot; {Math.round((kristen.uploadInfo?.textLength || 0) / 1000)}k characters
-                  </p>
-                </div>
-              </div>
-              <div className="r-divider" />
-              <div
-                className="rl__paper-result"
-                dangerouslySetInnerHTML={{ __html: formatMarkdown(kristen.result) }}
-              />
-            </div>
+            <PaperInsightsCard kristen={kristen} />
           ) : (
             <div className="r-empty">
               <div className="r-empty__icon">P</div>
@@ -146,8 +133,144 @@ export function ResearchLibrary({ slr, kristen }) {
   );
 }
 
-/* ─── SLR Summary Table ───────────────────────────────────────────────── */
-function SLRSummaryTable({ results }) {
+/* ─── Paper Insights Card (with copy/download) ───────────────────────── */
+function PaperInsightsCard({ kristen }) {
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const copyToClipboard = useCallback(() => {
+    if (!kristen.result) return;
+    navigator.clipboard.writeText(kristen.result).then(() => {
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    });
+  }, [kristen.result]);
+
+  const downloadAsText = useCallback(() => {
+    if (!kristen.result) return;
+    const filename = (kristen.uploadInfo?.filename || 'analysis').replace(/\.pdf$/i, '') + '_analysis.md';
+    const blob = new Blob([kristen.result], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }, [kristen.result, kristen.uploadInfo?.filename]);
+
+  return (
+    <div className="r-card r-card-padded">
+      <div className="r-flex r-items-center r-justify-between r-mb-2">
+        <div>
+          <h3>{kristen.uploadInfo?.filename || 'Research Paper'}</h3>
+          <p className="r-text-xs r-text-muted r-mt-1">
+            {kristen.uploadInfo?.pages} pages &middot; {Math.round((kristen.uploadInfo?.textLength || 0) / 1000)}k characters
+          </p>
+        </div>
+        <div className="r-flex r-gap-1">
+          <button className="r-btn r-btn-ghost r-btn-sm" onClick={copyToClipboard}>
+            {copyFeedback ? 'Copied!' : 'Copy'}
+          </button>
+          <button className="r-btn r-btn-ghost r-btn-sm" onClick={downloadAsText}>
+            Download .md
+          </button>
+        </div>
+      </div>
+      <div className="r-divider" />
+      <div
+        className="rl__paper-result"
+        dangerouslySetInnerHTML={{ __html: formatMarkdown(kristen.result) }}
+      />
+    </div>
+  );
+}
+
+/* ─── SLR Library Table (with search, sort, expand, tags) ────────────── */
+function SLRLibraryTable({ results }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [filter, setFilter] = useState('All');
+
+  const counts = useMemo(() => {
+    const c = { Include: 0, Maybe: 0, Exclude: 0, Background: 0 };
+    results.forEach(r => {
+      const s = r?.step_results?.screen?.status;
+      if (s in c) c[s]++;
+    });
+    return c;
+  }, [results]);
+
+  const filteredResults = useMemo(() => {
+    let items = results.filter(r => {
+      if (!r?.step_results) return false;
+      const s = r.step_results.screen?.status || 'Unknown';
+      return filter === 'All' || s === filter;
+    });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(r => {
+        const row = r._original_row || {};
+        const title = (row.Title || row.title || '').toLowerCase();
+        const authors = (row.Authors || row.authors || '').toLowerCase();
+        const journal = (row.Journal || row.journal || '').toLowerCase();
+        return title.includes(q) || authors.includes(q) || journal.includes(q);
+      });
+    }
+    return items;
+  }, [results, filter, searchQuery]);
+
+  const sortedResults = useMemo(() => {
+    if (!sortCol) return filteredResults;
+    const sorted = [...filteredResults].sort((a, b) => {
+      let av, bv;
+      const aRow = a._original_row || {};
+      const bRow = b._original_row || {};
+      if (sortCol === 'title') {
+        av = (aRow.Title || aRow.title || '').toLowerCase();
+        bv = (bRow.Title || bRow.title || '').toLowerCase();
+      } else if (sortCol === 'decision') {
+        const order = { Include: 0, Maybe: 1, Background: 2, Exclude: 3 };
+        av = order[a.step_results?.screen?.status] ?? 4;
+        bv = order[b.step_results?.screen?.status] ?? 4;
+      } else if (sortCol === 'confidence') {
+        av = a.step_results?.screen?.confidence ?? 0;
+        bv = b.step_results?.screen?.confidence ?? 0;
+      } else if (sortCol === 'path') {
+        av = (a.step_results?.path?.path || '').toLowerCase();
+        bv = (b.step_results?.path?.path || '').toLowerCase();
+      } else if (sortCol === 'meta') {
+        const order = { High: 0, Medium: 1, Low: 2 };
+        av = order[a.step_results?.meta?.meta_potential] ?? 3;
+        bv = order[b.step_results?.meta?.meta_potential] ?? 3;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredResults, sortCol, sortDir]);
+
+  const handleSort = (col) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sortIndicator = (col) => {
+    if (sortCol !== col) return <span className="lr__sort-icon">{'\u2195'}</span>;
+    return <span className="lr__sort-icon active">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>;
+  };
+
+  const statusBadge = (s) => {
+    const cls = s === 'Include' ? 'r-badge-success' :
+                s === 'Maybe' ? 'r-badge-warning' :
+                s === 'Exclude' ? 'r-badge-danger' : 'r-badge-neutral';
+    return `r-badge ${cls}`;
+  };
+
   const csvEscape = (val) => {
     const s = String(val ?? '');
     if (s.includes(',') || s.includes('"') || s.includes('\n')) {
@@ -157,21 +280,28 @@ function SLRSummaryTable({ results }) {
   };
 
   const exportCsv = () => {
-    let csv = 'Title,Status,Confidence,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
-    results.forEach(r => {
+    let csv = 'Article ID,Title,Authors,Year,Journal,DOI,Screen Status,Exclusion Code,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
+    sortedResults.forEach((r, idx) => {
       const row = r._original_row || {};
       const screen = r.step_results?.screen || {};
       const path = r.step_results?.path || {};
       const cg = r.step_results?.cg || {};
       const esg = r.step_results?.esg || {};
       const meta = r.step_results?.meta || {};
+      const cgStr = (Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).join('; ');
+      const esgStr = (Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).join('; ');
       csv += [
+        idx + 1,
         csvEscape(row.Title || row.title || ''),
+        csvEscape(row.Authors || ''),
+        csvEscape(row.Year || ''),
+        csvEscape(row.Journal || ''),
+        csvEscape(row.DOI || ''),
         csvEscape(screen.status || ''),
-        `${Math.round((screen.confidence || 0) * 100)}%`,
+        csvEscape(screen.exclusion_code || ''),
         csvEscape(path.path || ''),
-        csvEscape((cg.cg_mechanisms || []).join('; ')),
-        csvEscape((esg.esg_outcomes || []).join('; ')),
+        csvEscape(cgStr),
+        csvEscape(esgStr),
         csvEscape(meta.meta_potential || ''),
       ].join(',') + '\n';
     });
@@ -184,70 +314,153 @@ function SLRSummaryTable({ results }) {
 
   return (
     <div>
-      <div className="r-flex r-items-center r-justify-between r-mb-2">
-        <p className="r-text-sm r-text-muted">{results.length} articles in library</p>
-        <button className="r-btn r-btn-secondary r-btn-sm" onClick={exportCsv}>Export CSV</button>
+      {/* Toolbar */}
+      <div className="lr__toolbar r-mb-2">
+        <div className="r-tabs">
+          {['All', 'Include', 'Maybe', 'Exclude', 'Background'].map(f => (
+            <button key={f} className={`r-tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+              {f} {f !== 'All' && counts[f] != null ? `(${counts[f]})` : ''}
+            </button>
+          ))}
+        </div>
+        <div className="lr__toolbar-right">
+          <div className="lr__search">
+            <input
+              type="text"
+              className="r-input lr__search-input"
+              placeholder="Search title, authors, journal..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="lr__search-clear" onClick={() => setSearchQuery('')}>&times;</button>
+            )}
+          </div>
+          <button className="r-btn r-btn-secondary r-btn-sm" onClick={exportCsv}>Export CSV</button>
+        </div>
       </div>
+
+      {searchQuery && (
+        <div className="r-text-sm r-text-muted r-mb-1">
+          {sortedResults.length} result{sortedResults.length !== 1 ? 's' : ''} matching &ldquo;{searchQuery}&rdquo;
+        </div>
+      )}
+
+      {/* Table */}
       <div className="r-table-container">
         <table className="r-table">
           <thead>
             <tr>
               <th>#</th>
-              <th>Title</th>
-              <th>Decision</th>
-              <th>Confidence</th>
-              <th>Path</th>
-              <th>Meta</th>
+              <th className="lr__sortable" onClick={() => handleSort('title')}>Title {sortIndicator('title')}</th>
+              <th className="lr__sortable" onClick={() => handleSort('decision')}>Decision {sortIndicator('decision')}</th>
+              <th className="lr__sortable" onClick={() => handleSort('confidence')}>Conf. {sortIndicator('confidence')}</th>
+              <th className="lr__sortable" onClick={() => handleSort('path')}>Path {sortIndicator('path')}</th>
+              <th>Tags</th>
+              <th className="lr__sortable" onClick={() => handleSort('meta')}>Meta {sortIndicator('meta')}</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {results.map((r, i) => {
+            {sortedResults.map((r, i) => {
               const row = r._original_row || {};
               const screen = r.step_results?.screen || {};
               const path = r.step_results?.path || {};
+              const cg = r.step_results?.cg || {};
+              const esg = r.step_results?.esg || {};
               const meta = r.step_results?.meta || {};
-              const cls = screen.status === 'Include' ? 'r-badge-success' :
-                          screen.status === 'Maybe' ? 'r-badge-warning' :
-                          screen.status === 'Exclude' ? 'r-badge-danger' : 'r-badge-neutral';
+              const isExpanded = expandedRow === i;
+
               return (
-                <tr key={i}>
-                  <td>{i + 1}</td>
-                  <td style={{ maxWidth: '400px', fontWeight: 500 }}>
-                    {row.Title || row.title || 'Unknown'}
-                    {row.Year && <span className="r-text-xs r-text-muted" style={{ marginLeft: 8 }}>{row.Year}</span>}
-                  </td>
-                  <td><span className={`r-badge ${cls}`}>{screen.status || 'N/A'}</span></td>
-                  <td className="r-text-sm r-text-muted">{screen.confidence ? `${Math.round(screen.confidence * 100)}%` : '--'}</td>
-                  <td>{path.path ? <span className="r-chip r-chip-sky">{path.path.replace(/_/g, ' ')}</span> : '--'}</td>
-                  <td>{meta.meta_potential ? (
-                    <span className={`r-badge ${meta.meta_potential === 'High' ? 'r-badge-success' : meta.meta_potential === 'Low' ? 'r-badge-danger' : 'r-badge-warning'}`}>
-                      {meta.meta_potential}
-                    </span>
-                  ) : '--'}</td>
-                </tr>
+                <React.Fragment key={i}>
+                  <tr>
+                    <td>{(r._index ?? i) + 1}</td>
+                    <td style={{ maxWidth: '340px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--r-text)', lineHeight: 1.4 }}>
+                        {row.Title || row.title || 'Unknown'}
+                      </div>
+                      <div className="r-text-xs r-text-muted r-mt-1">
+                        {row.Authors ? `${String(row.Authors).substring(0, 60)}... ` : ''}
+                        {row.Journal || ''} {row.Year ? `\u00B7 ${row.Year}` : ''}
+                        {row._source && <span className="r-chip" style={{ marginLeft: 6, padding: '1px 6px', fontSize: 10 }}>{row._source}</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={statusBadge(screen.status)}>{screen.status || 'N/A'}</span>
+                      {screen.exclusion_code && (
+                        <div className="r-text-xs r-text-muted r-mt-1">{screen.exclusion_code}</div>
+                      )}
+                    </td>
+                    <td className="r-text-sm r-text-muted">{screen.confidence ? `${Math.round(screen.confidence * 100)}%` : '--'}</td>
+                    <td>{path.path ? <span className="r-chip r-chip-sky">{path.path.replace(/_/g, ' ')}</span> : '--'}</td>
+                    <td style={{ maxWidth: '200px' }}>
+                      <div className="r-flex" style={{ flexWrap: 'wrap', gap: 3 }}>
+                        {(Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).slice(0, 2).map(t => (
+                          <span key={t} className="r-chip r-chip-indigo" style={{ fontSize: 10 }}>{t.replace(/_/g, ' ')}</span>
+                        ))}
+                        {(Array.isArray(cg.cg_mechanisms) && cg.cg_mechanisms.length > 2) && (
+                          <span className="r-chip" style={{ fontSize: 10 }}>+{cg.cg_mechanisms.length - 2}</span>
+                        )}
+                        {(Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).slice(0, 2).map(t => (
+                          <span key={t} className="r-chip r-chip-emerald" style={{ fontSize: 10 }}>{t.replace(/_/g, ' ')}</span>
+                        ))}
+                        {(Array.isArray(esg.esg_outcomes) && esg.esg_outcomes.length > 2) && (
+                          <span className="r-chip" style={{ fontSize: 10 }}>+{esg.esg_outcomes.length - 2}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>{meta.meta_potential ? (
+                      <span className={`r-badge ${meta.meta_potential === 'High' ? 'r-badge-success' : meta.meta_potential === 'Low' ? 'r-badge-danger' : 'r-badge-warning'}`}>
+                        {meta.meta_potential}
+                      </span>
+                    ) : '--'}</td>
+                    <td>
+                      <button
+                        className="r-btn r-btn-ghost r-btn-sm"
+                        onClick={() => setExpandedRow(isExpanded ? null : i)}
+                      >
+                        {isExpanded ? 'Hide' : 'Details'}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan="8" style={{ padding: '16px 20px', background: 'var(--r-bg-alt)' }}>
+                        <div className="lr__expanded">
+                          <div className="lr__expanded-section">
+                            <h4>Reasoning</h4>
+                            <p className="r-text-sm">{screen.reasoning || 'N/A'}</p>
+                          </div>
+                          <div className="lr__expanded-section">
+                            <h4>Abstract</h4>
+                            <p className="r-text-sm">{row.Abstract || row.abstract || 'N/A'}</p>
+                          </div>
+                          <div className="lr__expanded-grid">
+                            {['screen', 'path', 'cg', 'esg', 'meta'].map(step => (
+                              <div key={step} className="lr__expanded-step">
+                                <h4>{step.toUpperCase()}</h4>
+                                <pre className="lr__step-json">{JSON.stringify(r.step_results[step], null, 2)}</pre>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>
         </table>
+        {sortedResults.length === 0 && (
+          <div className="r-empty">
+            <div className="r-empty__icon">?</div>
+            <h3>No articles match this filter</h3>
+            <p>Try selecting a different filter tab or search term.</p>
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-/* ─── Helpers ─────────────────────────────────────────────────────────── */
-function formatMarkdown(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-    .replace(/<\/ul>\s*<ul>/g, '')
-    .replace(/\n\n/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>');
 }

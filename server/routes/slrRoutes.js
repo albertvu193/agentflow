@@ -56,6 +56,9 @@ slrRouter.post('/upload', upload.array('files'), (req, res) => {
 
         for (let file of req.files) {
             let df = parseUploadedFile(file.path, file.originalname);
+
+            // Clean up temp file after parsing
+            try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
             let source = detectSource(df[0] || {}, file.originalname);
 
             /*
@@ -131,10 +134,14 @@ slrRouter.post('/run', async (req, res) => {
     // Start asynchronously
     slrPipeline.activeJobs.set(jobId, { status: 'starting', progress: 0, total: articles.length });
 
-    // Fire and forget
-    slrPipeline.runBatch(jobId, articles, maxArticles, 3).then(results => {
+    // Fire and forget — pass model so pipeline can override agent defaults
+    slrPipeline.runBatch(jobId, articles, maxArticles, 3, model || null).then(results => {
         slrPipeline.activeJobs.get(jobId).results = results;
-    }).catch(e => console.error(e));
+    }).catch(e => {
+        const job = slrPipeline.activeJobs.get(jobId);
+        if (job) { job.status = 'error'; job.error = e.message; }
+        console.error(e);
+    });
 
     res.json({ jobId });
 });

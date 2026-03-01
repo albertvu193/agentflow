@@ -57,6 +57,8 @@ export function ResearchApp({ onBack }) {
       // Don't trigger when typing in inputs
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // Don't navigate away when a modal is open (modal handlers use stopImmediatePropagation)
+      if (document.querySelector('.r-modal-overlay')) return;
 
       const pages = ['dashboard', 'papers', 'slr', 'library'];
       const num = parseInt(e.key);
@@ -86,6 +88,9 @@ export function ResearchApp({ onBack }) {
             slrStatus={slr.jobStatus}
             slrProgress={slr.progress}
             slrTotal={slr.total}
+            slrResults={slr.results}
+            kristenResult={kristen.result}
+            kristenFilename={kristen.uploadInfo?.filename}
           />
         );
     }

@@ -146,6 +146,29 @@
 .lr__stats-bar--indigo { background: #818cf8; }
 .lr__stats-bar--emerald { background: #34d399; }
 
+/* Dedup details */
+.lr__dedup-details {
+  background: var(--r-bg-alt);
+  border: 1px solid var(--r-border-light);
+  border-radius: var(--r-radius-sm);
+  padding: 10px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.lr__dedup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--r-border-light);
+}
+
+.lr__dedup-item:last-child {
+  border-bottom: none;
+}
+
 /* Feed items */
 .lr__feed {
   display: flex;

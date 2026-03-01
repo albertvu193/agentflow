@@ -12,6 +12,8 @@ export function useSLR() {
     const [total, setTotal] = useState(0);
     const [results, setResults] = useState([]);
     const [dedups, setDedups] = useState(null);
+    const [error, setError] = useState(null);
+    const [articleTitles, setArticleTitles] = useState([]);
 
     // Live feed from websocket
     const [liveFeed, setLiveFeed] = useState({});
@@ -34,6 +36,7 @@ export function useSLR() {
                 setJobStatus('screening');
                 setTotal(msg.total);
                 setDedups(msg.dedup);
+                if (msg.articleTitles) setArticleTitles(msg.articleTitles);
             } else if (msg.type === 'slr:progress') {
                 setProgress(msg.progress);
             } else if (msg.type === 'slr:item_step') {
@@ -47,6 +50,9 @@ export function useSLR() {
             } else if (msg.type === 'slr:done') {
                 setJobStatus('done');
                 setResults(msg.results || []);
+            } else if (msg.type === 'slr:error') {
+                setJobStatus('error');
+                setError(msg.error || 'Pipeline failed');
             }
         };
 
@@ -54,7 +60,7 @@ export function useSLR() {
     }, [jobId]);
 
     useEffect(() => {
-        if (jobId && jobStatus !== 'done') {
+        if (jobId && jobStatus !== 'done' && jobStatus !== 'error') {
             connectWs();
 
             // Fallback polling just in case WS drops
@@ -63,10 +69,15 @@ export function useSLR() {
                     const res = await fetch(`${API_BASE}/slr/status/${jobId}`);
                     if (res.ok) {
                         const data = await res.json();
-                        setJobStatus(data.status);
-                        setProgress(data.progress);
-                        setTotal(data.total);
-                        if (data.results) setResults(data.results);
+                        if (data.status === 'error') {
+                            setJobStatus('error');
+                            setError(data.error || 'Pipeline failed');
+                        } else {
+                            setJobStatus(data.status);
+                            setProgress(data.progress);
+                            setTotal(data.total);
+                            if (data.results) setResults(data.results);
+                        }
                     }
                 } catch (e) { }
             }, 3000);
@@ -93,6 +104,7 @@ export function useSLR() {
 
     const startRun = async (maxArticles, model) => {
         if (!batchId) return;
+        setError(null);
         const body = { batchId, maxArticles };
         if (model) body.model = model;
         const res = await fetch(`${API_BASE}/slr/run`, {
@@ -107,6 +119,7 @@ export function useSLR() {
             setLiveFeed({});
             setResults([]);
             setProgress(0);
+            setArticleTitles([]);
         } else {
             throw new Error(data.error || 'Run failed');
         }
@@ -122,10 +135,12 @@ export function useSLR() {
         setResults([]);
         setDedups(null);
         setLiveFeed({});
+        setError(null);
+        setArticleTitles([]);
     };
 
     return {
         uploadFiles, startRun, reset,
-        batchId, uploadStats, jobId, jobStatus, progress, total, results, dedups, liveFeed
+        batchId, uploadStats, jobId, jobStatus, progress, total, results, dedups, liveFeed, error, articleTitles
     };
 }

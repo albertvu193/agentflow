@@ -116,9 +116,12 @@ export class SLRPipeline {
     }
 
     // ── Batch runner ───────────────────────────────────────────────────────────
-    async runBatch(jobId, articles, maxArticles, concurrency = 3) {
+    async runBatch(jobId, articles, maxArticles, concurrency = 3, model = null) {
         const job = this.activeJobs.get(jobId);
         if (!job) return;
+
+        // Store model override so classifyArticle can use it
+        job.model = model;
 
         const { clean, dupCount, dupDetails } = this.deduplicateArticles(articles);
         job.dedup = { removed: dupCount, kept: clean.length, details: dupDetails };
@@ -129,7 +132,9 @@ export class SLRPipeline {
         job.status = 'screening';
         job.results = new Array(targetArticles.length).fill(null);
 
-        this.broadcast(jobId, { type: 'start', total: job.total, dedup: job.dedup });
+        // Send article titles so the UI can show them in the live feed
+        const articleTitles = targetArticles.map(r => r.Title || r.title || '');
+        this.broadcast(jobId, { type: 'start', total: job.total, dedup: job.dedup, articleTitles });
 
         // Get live agents so edits to systemPrompt in the UI are respected
         const getAgent = (id) => this.memoryManager.getAgent(id);
@@ -137,7 +142,7 @@ export class SLRPipeline {
         const queue = targetArticles.map((row, index) => ({ row, index }));
         let running = 0;
 
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const processNext = async () => {
                 if (queue.length === 0 && running === 0) {
                     job.status = 'done';
@@ -151,7 +156,7 @@ export class SLRPipeline {
                 const item = queue.shift();
 
                 try {
-                    job.results[item.index] = await this.classifyArticle(item, getAgent, jobId);
+                    job.results[item.index] = await this.classifyArticle(item, getAgent, jobId, model);
                 } catch (e) {
                     job.results[item.index] = { _error: e.message, _original_row: item.row, step_results: {} };
                 }
@@ -178,7 +183,7 @@ export class SLRPipeline {
      *  3. Maybe is treated the same as Include for subsequent steps (article needs full-text review,
      *     but we still extract what we can from the abstract).
      */
-    async classifyArticle({ row, index }, getAgent, jobId) {
+    async classifyArticle({ row, index }, getAgent, jobId, model = null) {
         const title = row.Title || row.title || '';
         const abstract = row.Abstract || row.abstract || '';
         const keywords = row.Author_Keywords || row.author_keywords || '';
@@ -223,8 +228,11 @@ export class SLRPipeline {
                         .replace('esg_tagger', 'esg')
                         .replace('meta_scorer', 'meta'));
 
+                const agentConfig = { ...agent, systemPrompt };
+                if (model) agentConfig.model = model;
+
                 const rawOutput = await this.agentRunner.runAgent(
-                    { ...agent, systemPrompt },
+                    agentConfig,
                     articleText,
                     `slr-${jobId}-${index}`
                 );

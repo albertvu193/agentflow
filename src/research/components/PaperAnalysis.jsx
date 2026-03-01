@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { formatMarkdown } from '../utils/formatMarkdown';
 import './PaperAnalysis.css';
 
 export function PaperAnalysis({ kristen }) {
@@ -6,6 +7,8 @@ export function PaperAnalysis({ kristen }) {
   const streamEndRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [fileError, setFileError] = useState(null);
+  const [model, setModel] = useState('haiku');
 
   useEffect(() => {
     if (kristen.streamedText && streamEndRef.current) {
@@ -15,11 +18,15 @@ export function PaperAnalysis({ kristen }) {
 
   const handleFile = async (file) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.pdf')) return;
+    setFileError(null);
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setFileError(`"${file.name}" is not a PDF. Please upload a .pdf file.`);
+      return;
+    }
     try {
       await kristen.uploadFile(file);
     } catch (err) {
-      console.error('Upload failed:', err);
+      setFileError(err.message || 'Upload failed');
     }
   };
 
@@ -35,7 +42,7 @@ export function PaperAnalysis({ kristen }) {
 
   const handleRun = async () => {
     try {
-      await kristen.startRun();
+      await kristen.startRun(model);
     } catch (err) {
       console.error('Run failed:', err);
     }
@@ -77,7 +84,9 @@ export function PaperAnalysis({ kristen }) {
             <button className="r-btn r-btn-ghost r-btn-sm" onClick={downloadAsText}>
               Download .md
             </button>
-            <button className="r-btn r-btn-secondary" onClick={kristen.reset}>
+            <button className="r-btn r-btn-secondary" onClick={() => {
+              if (window.confirm('Start a new analysis? Current results will be cleared.')) kristen.reset();
+            }}>
               Analyze Another
             </button>
           </div>
@@ -141,6 +150,11 @@ export function PaperAnalysis({ kristen }) {
               hidden
             />
           </div>
+          {fileError && (
+            <div className="r-alert r-alert-danger r-mt-2">
+              {fileError}
+            </div>
+          )}
         </div>
       )}
 
@@ -162,6 +176,21 @@ export function PaperAnalysis({ kristen }) {
             <div className="pa__preview-text">{kristen.uploadInfo.preview}...</div>
           </div>
 
+          <div className="lr__config-row r-mt-2">
+            <div className="lr__max-input">
+              <label className="r-label">AI Model</label>
+              <select
+                className="r-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                style={{ width: '160px' }}
+              >
+                <option value="haiku">Haiku (Fast)</option>
+                <option value="sonnet">Sonnet (Balanced)</option>
+                <option value="opus">Opus (Best)</option>
+              </select>
+            </div>
+          </div>
           <div className="r-flex r-gap-1 r-mt-2">
             <button className="r-btn r-btn-primary r-btn-lg" onClick={handleRun}>
               Generate Insights
@@ -308,19 +337,3 @@ function getSectionColor(title) {
   return 'neutral';
 }
 
-function formatMarkdown(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-    .replace(/<\/ul>\s*<ul>/g, '')
-    .replace(/\n\n/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>');
-}

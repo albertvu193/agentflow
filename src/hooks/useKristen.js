@@ -105,16 +105,18 @@ export function useKristen() {
         }
     };
 
-    const startRun = async () => {
+    const startRun = async (model) => {
         if (!paperId) return;
         setStreamedText('');
         setResult(null);
         setError(null);
 
+        const body = { paperId };
+        if (model) body.model = model;
         const res = await fetch(`${API_BASE}/kristen/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paperId }),
+            body: JSON.stringify(body),
         });
         const data = await res.json();
         if (res.ok) {
