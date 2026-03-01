@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kristen — Research Paper Insights</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.7);
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --bg-glass-border: rgba(255, 255, 255, 0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-blue-glow: rgba(59, 130, 246, 0.3);
+  --accent-purple: #8b5cf6;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.1);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+body::before {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+#app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  background: rgba(17, 24, 39, 0.8);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+}
+.header__left { display: flex; align-items: center; gap: 16px; }
+.header__logo { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #8b5cf6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header__sub { font-size: 12px; color: var(--text-muted); }
+.header__right { display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot--connected { background: var(--accent-green); box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+.status-dot--disconnected { background: var(--accent-red); }
+.status-text { font-size: 11px; color: var(--text-muted); }
+
+/* Main panel */
+.kristen-panel {
+  max-width: 900px; width: 100%; margin: 0 auto;
+  padding: 24px; padding-bottom: 80px;
+  flex: 1; overflow-y: auto;
+  animation: fade-in 0.3s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.kristen-header { margin-bottom: 24px; text-align: center; }
+.kristen-header h2 { font-size: 22px; font-weight: 700; }
+.text-secondary { color: var(--text-secondary); font-size: 14px; }
+.text-muted { color: var(--text-muted); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+  border: none; cursor: pointer; transition: all 0.2s ease;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: white; box-shadow: 0 2px 12px var(--accent-blue-glow);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-blue-glow); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-secondary {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+.btn-secondary:hover { background: var(--bg-glass); color: var(--text-primary); border-color: var(--accent-blue); }
+
+/* Upload dropzone */
+.upload-dropzone {
+  border: 2px dashed var(--border-light); border-radius: var(--radius-lg);
+  padding: 60px 40px; text-align: center; cursor: pointer;
+  transition: all 0.2s;
+}
+.upload-dropzone:hover { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.04); }
+.upload-dropzone--active { border-color: var(--accent-blue) !important; background: rgba(99, 102, 241, 0.05) !important; }
+.upload-icon { font-size: 48px; margin-bottom: 12px; filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.3)); }
+.upload-dropzone h3 { font-size: 16px; margin-bottom: 4px; }
+
+/* File info card */
+.kristen-uploaded-card {
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); padding: 24px;
+}
+.kristen-file-info { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.kristen-file-icon { font-size: 36px; }
+.kristen-filename { font-weight: 600; font-size: 15px; }
+.kristen-file-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.kristen-preview { background: rgba(0,0,0,0.2); border-radius: var(--radius-md); padding: 14px; }
+.kristen-preview-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.kristen-preview-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); max-height: 120px; overflow: hidden; font-family: var(--font-mono); }
+
+/* Streaming container */
+.kristen-streaming-container {
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.kristen-stream-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; border-bottom: 1px solid var(--border-light);
+  background: rgba(99, 102, 241, 0.04);
+}
+.kristen-stream-status { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+.kristen-stream-filename { font-size: 12px; color: var(--text-muted); }
+.kristen-pulse {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--accent-blue);
+  animation: pulse-anim 1.5s ease-in-out infinite;
+}
+@keyframes pulse-anim { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+.kristen-stream-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+.kristen-stream-section { margin-bottom: 20px; padding: 16px; border-radius: var(--radius-md); transition: all 0.3s; }
+.kristen-stream-section--done { background: rgba(99, 102, 241, 0.03); border-left: 3px solid var(--accent-green); }
+.kristen-stream-section--active { background: rgba(99, 102, 241, 0.06); border-left: 3px solid var(--accent-blue); animation: section-in 0.3s ease; }
+@keyframes section-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.kristen-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.kristen-section-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.kristen-section-check {
+  font-size: 14px; width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; border-radius: 50%; flex-shrink: 0;
+}
+.kristen-section-check.done { background: var(--accent-green); color: white; font-size: 11px; }
+.kristen-section-check.active { background: var(--accent-blue); color: white; font-size: 10px; animation: pulse-anim 1.5s ease-in-out infinite; }
+.kristen-section-body { font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+.kristen-section-body strong { color: var(--accent-blue); }
+.kristen-section-body ul { padding-left: 20px; margin: 8px 0; }
+.kristen-section-body li { margin-bottom: 4px; }
+.kristen-stream-cursor {
+  display: inline-block; width: 8px; height: 18px; background: var(--accent-blue);
+  border-radius: 1px; animation: blink 0.8s step-end infinite; margin-left: 4px; vertical-align: text-bottom;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.kristen-waiting { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px; }
+.kristen-spinner {
+  width: 48px; height: 48px; border: 3px solid var(--border-light);
+  border-top-color: var(--accent-blue); border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Progress bar */
+.kristen-progress { padding: 12px 24px; border-bottom: 1px solid var(--border-subtle); }
+.kristen-progress__header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.kristen-progress__label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+.kristen-progress__pct { font-size: 11px; font-weight: 600; color: var(--accent-blue); font-family: var(--font-mono); }
+.kristen-progress__track { height: 3px; background: var(--border-subtle); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.kristen-progress__fill { height: 100%; background: var(--accent-blue); border-radius: 2px; transition: width 0.5s ease; }
+.kristen-progress__sections { display: flex; flex-wrap: wrap; gap: 4px; }
+.kristen-progress__tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-glass); border: 1px solid var(--border-subtle); color: var(--text-muted); white-space: nowrap; }
+.kristen-progress__tag--done { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-green); }
+.kristen-progress__tag--active { background: rgba(59, 130, 246, 0.1); border-color: var(--accent-blue); color: var(--accent-blue); animation: pulse-anim 1.5s ease-in-out infinite; }
+
+/* Result */
+.kristen-result-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 32px; margin-bottom: 16px; }
+.kristen-result-content { font-size: 14px; line-height: 1.7; }
+.kristen-result-content h2 { font-size: 18px; font-weight: 700; margin: 24px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light); }
+.kristen-result-content h2:first-child { margin-top: 0; }
+.kristen-result-content h3 { font-size: 15px; font-weight: 600; margin: 16px 0 6px; }
+.kristen-result-content strong { color: var(--accent-blue); }
+.kristen-result-content ul { padding-left: 20px; margin: 8px 0; }
+.kristen-result-content li { margin-bottom: 4px; }
+.kristen-actions { text-align: center; }
+.kristen-error-card { background: var(--bg-card); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-lg); padding: 32px; text-align: center; }
+.kristen-error-card h3 { color: var(--accent-red); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+// --- Config ---
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:3001/api`;
+const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:3001/ws`;
+
+// --- State ---
+let state = {
+  connected: false,
+  paperId: null,
+  uploadInfo: null,
+  jobId: null,
+  status: 'idle', // idle | uploaded | running | done | error
+  result: null,
+  streamedText: '',
+  error: null,
+};
+
+function setState(updates) {
+  Object.assign(state, updates);
+  render();
+}
+
+// --- WebSocket ---
+let ws = null;
+
+function connectWS() {
+  ws = new WebSocket(WS_BASE);
+  ws.onopen = () => setState({ connected: true });
+  ws.onclose = () => { setState({ connected: false }); setTimeout(connectWS, 2000); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'init') return;
+    if (msg.jobId && msg.jobId !== state.jobId) return;
+    if (msg.type === 'kristen:start') setState({ status: 'running', streamedText: '' });
+    else if (msg.type === 'kristen:chunk') setState({ streamedText: msg.accumulated });
+    else if (msg.type === 'kristen:done') setState({ status: 'done', result: msg.result, streamedText: '' });
+    else if (msg.type === 'kristen:error') setState({ status: 'error', error: msg.error });
+  };
+}
+connectWS();
+
+// --- API ---
+async function uploadFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${API_BASE}/kristen/upload`, { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  setState({ paperId: data.paperId, uploadInfo: data, status: 'uploaded' });
+}
+
+async function startRun() {
+  if (!state.paperId) return;
+  setState({ streamedText: '', result: null, error: null });
+  const res = await fetch(`${API_BASE}/kristen/run`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paperId: state.paperId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Run failed');
+  setState({ jobId: data.jobId, status: 'running' });
+}
+
+function resetState() {
+  setState({ paperId: null, uploadInfo: null, jobId: null, status: 'idle', result: null, streamedText: '', error: null });
+}
+
+// --- Helpers ---
+const SECTIONS = ['WHAT', 'WHY', 'HYPOTHESIS', 'HOW'];
+
+function parseSections(text) {
+  if (!text) return [];
+  const secs = [];
+  const parts = text.split(/^(#+ .+)$/gm);
+  let title = null, content = '';
+  for (const p of parts) {
+    if (/^#+ /.test(p)) {
+      if (title || content.trim()) secs.push({ title, content: content.trim() });
+      title = p.replace(/^#+\s*(?:\*\*)?(.*?)(?:\*\*)?\s*$/, '$1');
+      content = '';
+    } else content += p;
+  }
+  if (title || content.trim()) secs.push({ title, content: content.trim() });
+  return secs;
+}
+
+function md(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/<\/ul>\s*<ul>/g, '')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// --- Render ---
+function render() {
+  const app = document.getElementById('app');
+  const { connected, status, uploadInfo, streamedText, result, error } = state;
+
+  let body = '';
+
+  // Header
+  body += `<div class="header">
+    <div class="header__left">
+      <div class="header__logo">AgentFlow</div>
+      <span class="header__sub">Kristen — Research Paper Insights</span>
+    </div>
+    <div class="header__right">
+      <span class="status-dot ${connected ? 'status-dot--connected' : 'status-dot--disconnected'}"></span>
+      <span class="status-text">${connected ? 'Connected' : 'Disconnected'}</span>
+    </div>
+  </div>`;
+
+  body += '<div class="kristen-panel">';
+  body += '<div class="kristen-header"><h2>Kristen &mdash; Research Paper Insights</h2><p class="text-secondary">Upload a research paper PDF to get a high-level overview powered by Claude.</p></div>';
+
+  // --- IDLE ---
+  if (status === 'idle') {
+    body += `<div class="upload-dropzone" id="dropzone">
+      <div class="upload-icon">&#x1F4D1;</div>
+      <h3>Drop a PDF here</h3>
+      <p class="text-muted">or click to browse</p>
+      <input type="file" id="file-input" accept=".pdf" hidden />
+    </div>`;
+  }
+
+  // --- UPLOADED ---
+  if (status === 'uploaded' && uploadInfo) {
+    body += `<div class="kristen-uploaded-card">
+      <div class="kristen-file-info">
+        <span class="kristen-file-icon">&#x1F4C4;</span>
+        <div>
+          <div class="kristen-filename">${esc(uploadInfo.filename)}</div>
+          <div class="kristen-file-meta">${uploadInfo.pages} pages &middot; ${Math.round(uploadInfo.textLength / 1000)}k characters extracted</div>
+        </div>
+      </div>
+      <div class="kristen-preview">
+        <div class="kristen-preview-label">Text Preview</div>
+        <div class="kristen-preview-text">${esc(uploadInfo.preview)}...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" id="btn-run">Generate Insights</button>
+        <button class="btn btn-secondary" id="btn-cancel">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  // --- RUNNING ---
+  if (status === 'running') {
+    body += '<div class="kristen-streaming-container">';
+    body += `<div class="kristen-stream-header">
+      <div class="kristen-stream-status"><div class="kristen-pulse"></div><span>Claude is reading the paper...</span></div>
+      <div class="kristen-stream-filename">${esc(uploadInfo?.filename || '')}</div>
+    </div>`;
+
+    if (streamedText) {
+      // Progress bar
+      const found = SECTIONS.filter(s => new RegExp(`^#+\\s*(?:\\*\\*)?${s}(?:\\*\\*)?`, 'm').test(streamedText));
+      const pct = Math.round((found.length / SECTIONS.length) * 100);
+      body += `<div class="kristen-progress">
+        <div class="kristen-progress__header">
+          <span class="kristen-progress__label">${found.length < SECTIONS.length ? `Section ${found.length + 1} of ${SECTIONS.length}` : 'Finishing up...'}</span>
+          <span class="kristen-progress__pct">${pct}%</span>
+        </div>
+        <div class="kristen-progress__track"><div class="kristen-progress__fill" style="width:${pct}%"></div></div>
+        <div class="kristen-progress__sections">
+          ${SECTIONS.map((s, i) => {
+            const done = found.includes(s);
+            const active = !done && i === found.length;
+            return `<span class="kristen-progress__tag ${done ? 'kristen-progress__tag--done' : active ? 'kristen-progress__tag--active' : ''}">${done ? '&#x2713;' : active ? '&#x25CF;' : ''} ${s}</span>`;
+          }).join('')}
+        </div>
+      </div>`;
+
+      // Sections
+      const secs = parseSections(streamedText);
+      body += '<div class="kristen-stream-body">';
+      secs.forEach((sec, i) => {
+        const isLast = i === secs.length - 1;
+        body += `<div class="kristen-stream-section ${isLast ? 'kristen-stream-section--active' : 'kristen-stream-section--done'}">`;
+        if (sec.title) {
+          body += `<div class="kristen-section-header">
+            <span class="kristen-section-check ${isLast ? 'active' : 'done'}">${isLast ? '&#x25CF;' : '&#x2713;'}</span>
+            <h3>${esc(sec.title)}</h3>
+          </div>`;
+        }
+        body += `<div class="kristen-section-body">${md(sec.content)}</div></div>`;
+      });
+      body += '<div class="kristen-stream-cursor"></div></div>';
+    } else {
+      body += '<div class="kristen-waiting"><div class="kristen-spinner"></div><p class="text-muted">Connecting to Claude...</p></div>';
+    }
+    body += '</div>';
+  }
+
+  // --- DONE ---
+  if (status === 'done' && result) {
+    body += `<div class="kristen-result-card"><div class="kristen-result-content">${md(result)}</div></div>`;
+    body += '<div class="kristen-actions"><button class="btn btn-secondary" id="btn-reset">Analyze Another Paper</button></div>';
+  }
+
+  // --- ERROR ---
+  if (status === 'error') {
+    body += `<div class="kristen-error-card">
+      <h3>Something went wrong</h3>
+      <p class="text-secondary">${esc(error || 'Unknown error')}</p>
+      <button class="btn btn-secondary" id="btn-retry" style="margin-top:12px">Try Again</button>
+    </div>`;
+  }
+
+  body += '</div>';
+  app.innerHTML = body;
+
+  // --- Bind events ---
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+
+  if (dropzone) {
+    dropzone.addEventListener('click', () => fileInput?.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('upload-dropzone--active'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('upload-dropzone--active'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropzone.classList.remove('upload-dropzone--active');
+      if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+    });
+  }
+  if (fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); });
+
+  document.getElementById('btn-run')?.addEventListener('click', () => startRun().catch(e => alert(e.message)));
+  document.getElementById('btn-cancel')?.addEventListener('click', resetState);
+  document.getElementById('btn-reset')?.addEventListener('click', resetState);
+  document.getElementById('btn-retry')?.addEventListener('click', resetState);
+
+  // Auto-scroll streaming
+  const streamBody = document.querySelector('.kristen-stream-body');
+  if (streamBody) streamBody.scrollTop = streamBody.scrollHeight;
+}
+
+function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) { alert('Please upload a PDF file.'); return; }
+  uploadFile(file).catch(e => alert(e.message));
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
