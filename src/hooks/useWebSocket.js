@@ -5,6 +5,7 @@ export function useWebSocket() {
     const [agentStatuses, setAgentStatuses] = useState({});
     const [logs, setLogs] = useState([]);
     const [agentOutputs, setAgentOutputs] = useState({});
+    const [validations, setValidations] = useState({}); // { agentId: { valid, missing } }
     const [workflowStatus, setWorkflowStatus] = useState('idle'); // idle, running, completed, error
     const [currentRunId, setCurrentRunId] = useState(null);
     const [progress, setProgress] = useState(null); // { currentStep, totalSteps, agentId, agentName }
@@ -57,6 +58,14 @@ export function useWebSocket() {
                     }));
                     break;
 
+                case 'agent:chunk':
+                    // Streaming intermediate output — append chunk
+                    setAgentOutputs((prev) => ({
+                        ...prev,
+                        [message.agentId]: (prev[message.agentId] || '') + message.chunk,
+                    }));
+                    break;
+
                 case 'agent:log':
                     setLogs((prev) => [
                         ...prev.slice(-200), // Keep last 200 logs
@@ -95,6 +104,16 @@ export function useWebSocket() {
                 case 'workflow:stopped':
                     setWorkflowStatus('idle');
                     break;
+
+                case 'workflow:validation':
+                    setValidations((prev) => ({
+                        ...prev,
+                        [message.agentId]: {
+                            valid: message.valid,
+                            missing: message.missing || [],
+                        },
+                    }));
+                    break;
             }
         };
     }, []);
@@ -111,6 +130,7 @@ export function useWebSocket() {
         setAgentStatuses({});
         setLogs([]);
         setAgentOutputs({});
+        setValidations({});
         setWorkflowStatus('idle');
         setCurrentRunId(null);
         setProgress(null);
@@ -121,6 +141,7 @@ export function useWebSocket() {
         agentStatuses,
         logs,
         agentOutputs,
+        validations,
         workflowStatus,
         currentRunId,
         progress,

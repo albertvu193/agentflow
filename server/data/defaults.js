@@ -5,8 +5,18 @@ import {
     slrEsgTaggerPrompt,
     slrMetaScorerPrompt
 } from './slrPrompts.js';
+import { loadAgentPrompts } from '../services/promptLoader.js';
 
 export function getDefaults() {
+    // Load AI Agent prompts from modular .md files
+    const aiAgentPrompts = loadAgentPrompts('ai-agent');
+
+    // Build a lookup for file-loaded prompts, fall back to inline if file missing
+    const aiAgentMap = {};
+    for (const p of aiAgentPrompts) {
+        aiAgentMap[p.id] = p;
+    }
+
     return {
         agents: [
             {
@@ -163,6 +173,14 @@ Rules:
 - Write for an educated reader. No jargon without explanation.
 - Be precise and detailed, extracting as much mechanistic insight as possible.`,
             },
+            // --- OpenAI-style AI Agent Workflow (loaded from server/prompts/ai-agent/*.md) ---
+            ...[
+                'ai-agent-planner',
+                'ai-agent-researcher',
+                'ai-agent-reasoner',
+                'ai-agent-executor',
+                'ai-agent-reviewer',
+            ].map(id => aiAgentMap[id] || { id, name: id, role: '', icon: '🤖', model: 'sonnet', systemPrompt: '' }),
             {
                 id: 'slr-screener',
                 name: 'SLR Screener',
@@ -232,6 +250,19 @@ Rules:
                     { agentId: 'bug-detector' },
                     { agentId: 'improvement-suggester' },
                     { agentId: 'report-generator' },
+                ],
+            },
+            {
+                id: 'ai-agent',
+                name: 'AI Agent',
+                description: 'OpenAI-style agentic workflow: Plan → Research → Reason → Execute → Review with full intermediate visibility',
+                icon: '🤖',
+                steps: [
+                    { agentId: 'ai-agent-planner', inputTemplate: 'User request: {{input}}' },
+                    { agentId: 'ai-agent-researcher' },
+                    { agentId: 'ai-agent-reasoner' },
+                    { agentId: 'ai-agent-executor' },
+                    { agentId: 'ai-agent-reviewer' },
                 ],
             },
             {

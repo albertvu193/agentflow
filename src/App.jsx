@@ -1,17 +1,19 @@
 import { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PipelineView } from './components/PipelineView';
+import { AgentFlowView } from './components/AgentFlowView';
 import { SLRPanel } from './components/SLRPanel';
 import { KristenPanel } from './components/KristenPanel';
 import { LogStream } from './components/LogStream';
 import { ProgressBar } from './components/ProgressBar';
 import { AgentEditor } from './components/AgentEditor';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAgents, useWorkflows } from './hooks/useApi';
 import './App.css';
 
 function App() {
-  const { isConnected, agentStatuses, logs, agentOutputs, workflowStatus, currentRunId, progress, resetState } = useWebSocket();
+  const { isConnected, agentStatuses, logs, agentOutputs, validations, workflowStatus, currentRunId, progress, resetState } = useWebSocket();
   const { agents, updateAgent, deleteAgent } = useAgents();
   const { workflows, runWorkflow, stopWorkflow } = useWorkflows();
 
@@ -57,6 +59,7 @@ function App() {
   }, [deleteAgent]);
 
   return (
+    <ErrorBoundary>
     <div className="app" id="app-root">
       <Header
         workflows={workflows}
@@ -84,6 +87,17 @@ function App() {
           <SLRPanel />
         ) : selectedWorkflowId === 'kristen-research-paper-insights' || selectedWorkflow?.id === 'kristen-research-paper-insights' ? (
           <KristenPanel />
+        ) : selectedWorkflowId === 'ai-agent' || selectedWorkflow?.id === 'ai-agent' ? (
+          <>
+            <AgentFlowView
+              workflow={selectedWorkflow}
+              agents={agents}
+              agentStatuses={agentStatuses}
+              agentOutputs={agentOutputs}
+              validations={validations}
+            />
+            <LogStream logs={logs} agents={agents} />
+          </>
         ) : (
           <>
             <PipelineView
@@ -107,6 +121,7 @@ function App() {
         />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 

@@ -47,6 +47,9 @@ export class AgentRunner {
         });
 
         return new Promise((resolve, reject) => {
+            let stdout = '';
+            let stderr = '';
+
             const args = [
                 '-p',
                 '--output-format', 'json',
