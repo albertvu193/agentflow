@@ -17,11 +17,134 @@
   padding-top: 16px;
 }
 
+.lr__config-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+}
+
 .lr__max-input {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
+/* Toolbar: tabs + search */
+.lr__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.lr__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lr__search {
+  position: relative;
+}
+
+.lr__search-input {
+  width: 240px;
+  padding-right: 28px !important;
+  font-size: 13px;
+}
+
+.lr__search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: var(--r-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.lr__search-clear:hover {
+  color: var(--r-text);
+}
+
+/* Sortable columns */
+.lr__sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.lr__sortable:hover {
+  color: var(--r-accent);
+}
+
+.lr__sort-icon {
+  font-size: 11px;
+  color: var(--r-text-muted);
+  margin-left: 4px;
+}
+
+.lr__sort-icon.active {
+  color: var(--r-accent);
+}
+
+/* Stats panel */
+.lr__stats-panel {
+  border-left: 3px solid var(--r-accent);
+}
+
+.lr__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.lr__stats-col h4 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--r-text-muted);
+  margin-bottom: 10px;
+}
+
+.lr__stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.lr__stats-row .r-chip {
+  min-width: 80px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.lr__stats-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--r-bg-alt);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.lr__stats-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.lr__stats-bar--sky { background: #38bdf8; }
+.lr__stats-bar--indigo { background: #818cf8; }
+.lr__stats-bar--emerald { background: #34d399; }
 
 /* Feed items */
 .lr__feed {

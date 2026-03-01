@@ -51,6 +51,25 @@ export function ResearchApp({ onBack }) {
     setCurrentPage(page);
   }, []);
 
+  // Keyboard shortcuts: 1=Dashboard, 2=Papers, 3=SLR, 4=Library, Esc=Back
+  useEffect(() => {
+    const handleKey = (e) => {
+      // Don't trigger when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const pages = ['dashboard', 'papers', 'slr', 'library'];
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 4) {
+        setCurrentPage(pages[num - 1]);
+      } else if (e.key === 'Escape') {
+        onBack();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onBack]);
+
   const renderPage = () => {
     switch (currentPage) {
       case 'papers':

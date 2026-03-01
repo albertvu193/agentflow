@@ -3,6 +3,8 @@ import './LiteratureReview.css';
 
 export function LiteratureReview({ slr }) {
   const [maxArticles, setMaxArticles] = useState(3);
+  const [dragOver, setDragOver] = useState(false);
+  const [model, setModel] = useState('haiku');
   const fileInputRef = useRef(null);
 
   const handleFileChange = async (e) => {
@@ -15,9 +17,17 @@ export function LiteratureReview({ slr }) {
     }
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files?.length) {
+      slr.uploadFiles(e.dataTransfer.files).catch(err => console.error('Upload failed:', err));
+    }
+  };
+
   const handleRun = async () => {
     try {
-      await slr.startRun(maxArticles);
+      await slr.startRun(maxArticles, model);
     } catch (err) {
       console.error('Run failed:', err);
     }
@@ -43,16 +53,19 @@ export function LiteratureReview({ slr }) {
       {!slr.batchId && (
         <div className="r-mt-2">
           <div
-            className="r-dropzone"
+            className={`r-dropzone ${dragOver ? 'active' : ''}`}
             role="button"
             tabIndex={0}
             aria-label="Upload bibliographic CSV or Excel files"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
           >
             <div className="r-dropzone__icon">L</div>
             <h3>Upload Bibliographic Data</h3>
-            <p>CSV or Excel files from Web of Science or Scopus</p>
+            <p>Drop CSV/Excel files here or click to browse</p>
             <p className="r-text-xs r-text-muted">Automatic source detection and deduplication</p>
             <input
               type="file"
@@ -94,16 +107,31 @@ export function LiteratureReview({ slr }) {
           </div>
 
           <div className="lr__run-controls r-mt-2">
-            <div className="lr__max-input">
-              <label className="r-label">Max articles to process (0 = all)</label>
-              <input
-                type="number"
-                className="r-input"
-                value={maxArticles}
-                onChange={(e) => setMaxArticles(Number(e.target.value))}
-                min={0}
-                style={{ width: '120px' }}
-              />
+            <div className="lr__config-row">
+              <div className="lr__max-input">
+                <label className="r-label">Max articles (0 = all)</label>
+                <input
+                  type="number"
+                  className="r-input"
+                  value={maxArticles}
+                  onChange={(e) => setMaxArticles(Number(e.target.value))}
+                  min={0}
+                  style={{ width: '120px' }}
+                />
+              </div>
+              <div className="lr__max-input">
+                <label className="r-label">AI Model</label>
+                <select
+                  className="r-select"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{ width: '160px' }}
+                >
+                  <option value="haiku">Haiku (Fast)</option>
+                  <option value="sonnet">Sonnet (Balanced)</option>
+                  <option value="opus">Opus (Best)</option>
+                </select>
+              </div>
             </div>
             <div className="r-flex r-gap-1 r-mt-2">
               <button className="r-btn r-btn-primary r-btn-lg" onClick={handleRun}>
@@ -220,6 +248,10 @@ function SLRResultsView({ results, onReset, dedups }) {
   const [expandedRow, setExpandedRow] = useState(null);
   const [teachModal, setTeachModal] = useState(null);
   const [teachStatus, setTeachStatus] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortCol, setSortCol] = useState(null);  // null | 'title' | 'decision' | 'confidence' | 'path' | 'meta'
+  const [sortDir, setSortDir] = useState('asc');
+  const [showStats, setShowStats] = useState(false);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -236,11 +268,90 @@ function SLRResultsView({ results, onReset, dedups }) {
     if (s in counts) counts[s]++;
   });
 
-  const filteredResults = results.filter(r => {
-    if (!r?.step_results) return false;
-    const s = r.step_results.screen?.status || 'Unknown';
-    return filter === 'All' || s === filter;
-  });
+  // Compute tag frequency stats
+  const tagStats = React.useMemo(() => {
+    const cgFreq = {};
+    const esgFreq = {};
+    const pathFreq = {};
+    results.forEach(r => {
+      const sr = r?.step_results;
+      if (!sr) return;
+      (sr.cg?.cg_mechanisms || []).forEach(t => { cgFreq[t] = (cgFreq[t] || 0) + 1; });
+      (sr.esg?.esg_outcomes || []).forEach(t => { esgFreq[t] = (esgFreq[t] || 0) + 1; });
+      if (sr.path?.path) pathFreq[sr.path.path] = (pathFreq[sr.path.path] || 0) + 1;
+    });
+    const sort = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
+    return { cg: sort(cgFreq), esg: sort(esgFreq), path: sort(pathFreq) };
+  }, [results]);
+
+  // Filter by status tab + search query
+  const filteredResults = React.useMemo(() => {
+    let items = results.filter(r => {
+      if (!r?.step_results) return false;
+      const s = r.step_results.screen?.status || 'Unknown';
+      return filter === 'All' || s === filter;
+    });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(r => {
+        const row = r._original_row || {};
+        const title = (row.Title || row.title || '').toLowerCase();
+        const authors = (row.Authors || row.authors || '').toLowerCase();
+        const abstract = (row.Abstract || row.abstract || '').toLowerCase();
+        const journal = (row.Journal || row.journal || '').toLowerCase();
+        return title.includes(q) || authors.includes(q) || abstract.includes(q) || journal.includes(q);
+      });
+    }
+
+    return items;
+  }, [results, filter, searchQuery]);
+
+  // Sort filtered results
+  const sortedResults = React.useMemo(() => {
+    if (!sortCol) return filteredResults;
+    const sorted = [...filteredResults].sort((a, b) => {
+      let av, bv;
+      const aRow = a._original_row || {};
+      const bRow = b._original_row || {};
+      if (sortCol === 'title') {
+        av = (aRow.Title || aRow.title || '').toLowerCase();
+        bv = (bRow.Title || bRow.title || '').toLowerCase();
+      } else if (sortCol === 'decision') {
+        const order = { Include: 0, Maybe: 1, Background: 2, Exclude: 3 };
+        av = order[a.step_results?.screen?.status] ?? 4;
+        bv = order[b.step_results?.screen?.status] ?? 4;
+      } else if (sortCol === 'confidence') {
+        av = a.step_results?.screen?.confidence ?? 0;
+        bv = b.step_results?.screen?.confidence ?? 0;
+      } else if (sortCol === 'path') {
+        av = (a.step_results?.path?.path || '').toLowerCase();
+        bv = (b.step_results?.path?.path || '').toLowerCase();
+      } else if (sortCol === 'meta') {
+        const order = { High: 0, Medium: 1, Low: 2 };
+        av = order[a.step_results?.meta?.meta_potential] ?? 3;
+        bv = order[b.step_results?.meta?.meta_potential] ?? 3;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredResults, sortCol, sortDir]);
+
+  const handleSort = (col) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sortIndicator = (col) => {
+    if (sortCol !== col) return <span className="lr__sort-icon">{'\u2195'}</span>;
+    return <span className="lr__sort-icon active">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>;
+  };
 
   const csvEscape = (val) => {
     const s = String(val ?? '');
@@ -252,7 +363,7 @@ function SLRResultsView({ results, onReset, dedups }) {
 
   const exportCsv = () => {
     let csv = 'Article ID,Title,Authors,Year,Journal,DOI,Screen Status,Exclusion Code,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
-    filteredResults.forEach((r, idx) => {
+    sortedResults.forEach((r, idx) => {
       const row = r._original_row || {};
       const screen = r.step_results?.screen || {};
       const path = r.step_results?.path || {};
@@ -369,18 +480,92 @@ function SLRResultsView({ results, onReset, dedups }) {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="r-tabs r-mt-3">
-        {['All', 'Include', 'Maybe', 'Exclude', 'Background'].map(f => (
+      {/* Filter tabs + search */}
+      <div className="lr__toolbar r-mt-3">
+        <div className="r-tabs">
+          {['All', 'Include', 'Maybe', 'Exclude', 'Background'].map(f => (
+            <button
+              key={f}
+              className={`r-tab ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {f} {f !== 'All' && counts[f] != null ? `(${counts[f]})` : ''}
+            </button>
+          ))}
+        </div>
+        <div className="lr__toolbar-right">
           <button
-            key={f}
-            className={`r-tab ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(f)}
+            className={`r-btn r-btn-ghost r-btn-sm ${showStats ? 'active' : ''}`}
+            onClick={() => setShowStats(v => !v)}
+            title="Toggle tag frequency stats"
           >
-            {f} {f !== 'All' && counts[f] != null ? `(${counts[f]})` : ''}
+            Stats
           </button>
-        ))}
+          <div className="lr__search">
+            <input
+              type="text"
+              className="r-input lr__search-input"
+              placeholder="Search title, authors, abstract..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="lr__search-clear" onClick={() => setSearchQuery('')}>&times;</button>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Tag frequency stats panel */}
+      {showStats && (
+        <div className="lr__stats-panel r-card r-card-padded r-mt-2 r-slide-up">
+          <div className="lr__stats-grid">
+            <div className="lr__stats-col">
+              <h4>Pathways</h4>
+              {tagStats.path.length > 0 ? tagStats.path.map(([tag, count]) => (
+                <div key={tag} className="lr__stats-row">
+                  <span className="r-chip r-chip-sky">{tag.replace(/_/g, ' ')}</span>
+                  <span className="lr__stats-bar-wrap">
+                    <span className="lr__stats-bar lr__stats-bar--sky" style={{ width: `${(count / total) * 100}%` }} />
+                  </span>
+                  <span className="r-text-xs r-text-muted">{count}</span>
+                </div>
+              )) : <p className="r-text-xs r-text-muted">No path data</p>}
+            </div>
+            <div className="lr__stats-col">
+              <h4>CG Mechanisms</h4>
+              {tagStats.cg.length > 0 ? tagStats.cg.slice(0, 8).map(([tag, count]) => (
+                <div key={tag} className="lr__stats-row">
+                  <span className="r-chip r-chip-indigo">{tag.replace(/_/g, ' ')}</span>
+                  <span className="lr__stats-bar-wrap">
+                    <span className="lr__stats-bar lr__stats-bar--indigo" style={{ width: `${(count / total) * 100}%` }} />
+                  </span>
+                  <span className="r-text-xs r-text-muted">{count}</span>
+                </div>
+              )) : <p className="r-text-xs r-text-muted">No CG data</p>}
+            </div>
+            <div className="lr__stats-col">
+              <h4>ESG Outcomes</h4>
+              {tagStats.esg.length > 0 ? tagStats.esg.slice(0, 8).map(([tag, count]) => (
+                <div key={tag} className="lr__stats-row">
+                  <span className="r-chip r-chip-emerald">{tag.replace(/_/g, ' ')}</span>
+                  <span className="lr__stats-bar-wrap">
+                    <span className="lr__stats-bar lr__stats-bar--emerald" style={{ width: `${(count / total) * 100}%` }} />
+                  </span>
+                  <span className="r-text-xs r-text-muted">{count}</span>
+                </div>
+              )) : <p className="r-text-xs r-text-muted">No ESG data</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search result count */}
+      {searchQuery && (
+        <div className="r-text-sm r-text-muted r-mt-1">
+          {sortedResults.length} result{sortedResults.length !== 1 ? 's' : ''} matching &ldquo;{searchQuery}&rdquo;
+        </div>
+      )}
 
       {/* Results table */}
       <div className="r-table-container">
@@ -388,15 +573,15 @@ function SLRResultsView({ results, onReset, dedups }) {
           <thead>
             <tr>
               <th>#</th>
-              <th>Title & Details</th>
-              <th>Decision</th>
-              <th>Path</th>
+              <th className="lr__sortable" onClick={() => handleSort('title')}>Title & Details {sortIndicator('title')}</th>
+              <th className="lr__sortable" onClick={() => handleSort('decision')}>Decision {sortIndicator('decision')}</th>
+              <th className="lr__sortable" onClick={() => handleSort('path')}>Path {sortIndicator('path')}</th>
               <th>Tags</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredResults.map((r, i) => {
+            {sortedResults.map((r, i) => {
               const screen = r.step_results?.screen || {};
               const path = r.step_results?.path || {};
               const cg = r.step_results?.cg || {};
@@ -500,7 +685,7 @@ function SLRResultsView({ results, onReset, dedups }) {
             })}
           </tbody>
         </table>
-        {filteredResults.length === 0 && (
+        {sortedResults.length === 0 && (
           <div className="r-empty">
             <div className="r-empty__icon">?</div>
             <h3>No articles match this filter</h3>

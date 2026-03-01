@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import './PaperAnalysis.css';
 
 export function PaperAnalysis({ kristen }) {
   const fileInputRef = useRef(null);
   const streamEndRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   useEffect(() => {
     if (kristen.streamedText && streamEndRef.current) {
@@ -40,6 +41,24 @@ export function PaperAnalysis({ kristen }) {
     }
   };
 
+  const copyToClipboard = useCallback(() => {
+    if (!kristen.result) return;
+    navigator.clipboard.writeText(kristen.result).then(() => {
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    });
+  }, [kristen.result]);
+
+  const downloadAsText = useCallback(() => {
+    if (!kristen.result) return;
+    const filename = (kristen.uploadInfo?.filename || 'analysis').replace(/\.pdf$/i, '') + '_analysis.md';
+    const blob = new Blob([kristen.result], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }, [kristen.result, kristen.uploadInfo?.filename]);
+
   // ─── Done state ──────────────────────────────────────────────────────
   if (kristen.status === 'done' && kristen.result) {
     const sections = parseSections(kristen.result);
@@ -52,8 +71,14 @@ export function PaperAnalysis({ kristen }) {
             <p className="r-text-secondary r-text-sm">{kristen.uploadInfo?.filename}</p>
           </div>
           <div className="r-flex r-gap-1">
+            <button className="r-btn r-btn-ghost r-btn-sm" onClick={copyToClipboard}>
+              {copyFeedback ? 'Copied!' : 'Copy'}
+            </button>
+            <button className="r-btn r-btn-ghost r-btn-sm" onClick={downloadAsText}>
+              Download .md
+            </button>
             <button className="r-btn r-btn-secondary" onClick={kristen.reset}>
-              Analyze Another Paper
+              Analyze Another
             </button>
           </div>
         </div>

@@ -1,10 +1,10 @@
 import './ResearchSidebar.css';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '=', section: 'Overview' },
-  { id: 'papers', label: 'Paper Analysis', icon: 'P', section: 'Tools' },
-  { id: 'slr', label: 'Literature Review', icon: 'L', section: 'Tools' },
-  { id: 'library', label: 'Research Library', icon: 'R', section: 'Data' },
+  { id: 'dashboard', label: 'Dashboard', icon: '=', section: 'Overview', shortcut: '1' },
+  { id: 'papers', label: 'Paper Analysis', icon: 'P', section: 'Tools', shortcut: '2' },
+  { id: 'slr', label: 'Literature Review', icon: 'L', section: 'Tools', shortcut: '3' },
+  { id: 'library', label: 'Research Library', icon: 'R', section: 'Data', shortcut: '4' },
 ];
 
 export function ResearchSidebar({ currentPage, onNavigate, onBack }) {
@@ -38,6 +38,7 @@ export function ResearchSidebar({ currentPage, onNavigate, onBack }) {
               >
                 <span className="r-sidebar__item-icon">{item.icon}</span>
                 <span className="r-sidebar__item-label">{item.label}</span>
+                <kbd className="r-sidebar__kbd">{item.shortcut}</kbd>
               </button>
             ))}
           </div>

@@ -91,12 +91,14 @@ export function useSLR() {
         }
     };
 
-    const startRun = async (maxArticles) => {
+    const startRun = async (maxArticles, model) => {
         if (!batchId) return;
+        const body = { batchId, maxArticles };
+        if (model) body.model = model;
         const res = await fetch(`${API_BASE}/slr/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batchId, maxArticles })
+            body: JSON.stringify(body)
         });
         const data = await res.json();
         if (res.ok) {
