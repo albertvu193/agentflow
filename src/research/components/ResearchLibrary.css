@@ -1,0 +1,60 @@
+/* ─── Research Library ────────────────────────────────────────────────── */
+
+.rl__quick-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.rl__quick-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.rl__quick-stat-count {
+  font-family: var(--r-font-heading);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--r-text);
+}
+
+.rl__quick-stat-label {
+  font-size: 12px;
+  color: var(--r-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Paper result formatting */
+.rl__paper-result {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--r-text-secondary);
+}
+
+.rl__paper-result h2 {
+  font-size: 18px;
+  margin: 20px 0 10px;
+  color: var(--r-text);
+}
+
+.rl__paper-result h3 {
+  font-size: 15px;
+  margin: 14px 0 8px;
+  color: var(--r-text);
+}
+
+.rl__paper-result strong {
+  color: var(--r-text);
+  font-weight: 600;
+}
+
+.rl__paper-result ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.rl__paper-result li {
+  margin: 4px 0;
+}
