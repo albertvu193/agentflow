@@ -1,5 +1,6 @@
 import { AgentRunner } from './agentRunner.js';
 import { v4 as uuidv4 } from 'uuid';
+import { loadContextOverlays, detectContext, validateOutput } from './promptLoader.js';
 
 export class WorkflowEngine {
     constructor(memoryManager, wss) {
@@ -7,6 +8,7 @@ export class WorkflowEngine {
         this.wss = wss;
         this.agentRunner = new AgentRunner(memoryManager, this.broadcast.bind(this));
         this.activeRuns = new Map();
+        this.contextOverlays = loadContextOverlays();
     }
 
     broadcast(message) {
@@ -35,6 +37,24 @@ export class WorkflowEngine {
         });
 
         try {
+            // --- Context-aware loading ---
+            // Detect input type once upfront and build a context overlay string
+            const matchedContexts = detectContext(initialInput, this.contextOverlays);
+            let contextOverlay = '';
+            if (matchedContexts.length > 0) {
+                const labels = matchedContexts.map(c => c.label);
+                contextOverlay = matchedContexts.map(c => c.body).join('\n\n');
+
+                this.broadcast({
+                    type: 'agent:log',
+                    runId,
+                    agentId: '_system',
+                    message: `Detected context: ${labels.join(', ')}`,
+                    level: 'info',
+                    timestamp: new Date().toISOString(),
+                });
+            }
+
             // Execute agents in order defined by the workflow steps
             let previousOutput = initialInput;
             const totalSteps = workflow.steps.length;
@@ -50,6 +70,12 @@ export class WorkflowEngine {
                 let stepInput = previousOutput;
                 if (step.inputTemplate) {
                     stepInput = step.inputTemplate.replace('{{input}}', previousOutput);
+                }
+
+                // Inject context overlay into the first agent's input (Planner)
+                // so all downstream agents inherit context-aware planning
+                if (i === 0 && contextOverlay) {
+                    stepInput = `${stepInput}\n\n[CONTEXT OVERLAY]\n${contextOverlay}\n[END CONTEXT OVERLAY]`;
                 }
 
                 this.broadcast({
@@ -88,6 +114,44 @@ export class WorkflowEngine {
                 } else {
                     output = await this.agentRunner.runAgent(agent, stepInput, runId);
                 }
+
+                // --- Validation hook ---
+                // Check output against expected sections defined in the prompt file
+                if (agent.expectedSections && agent.expectedSections.length > 0) {
+                    const validation = validateOutput(output, agent.expectedSections);
+                    if (!validation.valid) {
+                        for (const warning of validation.warnings) {
+                            this.broadcast({
+                                type: 'agent:log',
+                                runId,
+                                agentId: agent.id,
+                                message: `⚠️ Validation: ${warning}`,
+                                level: 'warn',
+                                timestamp: new Date().toISOString(),
+                            });
+                        }
+
+                        this.broadcast({
+                            type: 'workflow:validation',
+                            runId,
+                            agentId: agent.id,
+                            agentName: agent.name,
+                            valid: false,
+                            missing: validation.missing,
+                            timestamp: new Date().toISOString(),
+                        });
+                    } else {
+                        this.broadcast({
+                            type: 'agent:log',
+                            runId,
+                            agentId: agent.id,
+                            message: `✓ Output validated — all expected sections present`,
+                            level: 'success',
+                            timestamp: new Date().toISOString(),
+                        });
+                    }
+                }
+
                 previousOutput = output;
 
                 // Small delay between agents for visual effect

@@ -82,7 +82,31 @@ function NodeOutput({ output, isExpanded, onToggle }) {
     );
 }
 
-export function AgentFlowView({ workflow, agents, agentStatuses, agentOutputs }) {
+function ValidationBadge({ validation }) {
+    if (!validation) return null;
+
+    if (validation.valid) {
+        return (
+            <div className="af-validation af-validation--pass">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Validated
+            </div>
+        );
+    }
+
+    return (
+        <div className="af-validation af-validation--warn">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 3V7M6 9V9.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Missing: {validation.missing.join(', ')}
+        </div>
+    );
+}
+
+export function AgentFlowView({ workflow, agents, agentStatuses, agentOutputs, validations = {} }) {
     const [expandedNodes, setExpandedNodes] = useState({});
 
     if (!workflow) return null;
@@ -90,6 +114,13 @@ export function AgentFlowView({ workflow, agents, agentStatuses, agentOutputs })
     const workflowAgents = workflow.steps
         .map((step) => agents.find((a) => a.id === step.agentId))
         .filter(Boolean);
+
+    // Detect context from first agent's output for the header badge
+    const detectedContexts = [];
+    const firstOutput = agentOutputs[workflowAgents[0]?.id];
+    if (firstOutput && firstOutput.includes('[CONTEXT OVERLAY]')) {
+        // Context was injected — parse from logs instead
+    }
 
     const toggleExpanded = (agentId) => {
         setExpandedNodes((prev) => ({ ...prev, [agentId]: !prev[agentId] }));
@@ -195,6 +226,13 @@ export function AgentFlowView({ workflow, agents, agentStatuses, agentOutputs })
                                         isExpanded={isExpanded}
                                         onToggle={() => toggleExpanded(agent.id)}
                                     />
+                                )}
+
+                                {/* Validation hook result */}
+                                {isDone && validations[agent.id] && (
+                                    <div className="af-node__validation-row">
+                                        <ValidationBadge validation={validations[agent.id]} />
+                                    </div>
                                 )}
 
                                 {/* Progress bar for active node */}

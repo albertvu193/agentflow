@@ -422,3 +422,31 @@
     0% { transform: translateX(-100%); }
     100% { transform: translateX(350%); }
 }
+
+/* Validation badges */
+.af-node__validation-row {
+    padding: 0 20px 12px;
+}
+
+.af-validation {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.af-validation--pass {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.af-validation--warn {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-amber);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}

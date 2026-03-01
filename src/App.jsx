@@ -13,7 +13,7 @@ import { useAgents, useWorkflows } from './hooks/useApi';
 import './App.css';
 
 function App() {
-  const { isConnected, agentStatuses, logs, agentOutputs, workflowStatus, currentRunId, progress, resetState } = useWebSocket();
+  const { isConnected, agentStatuses, logs, agentOutputs, validations, workflowStatus, currentRunId, progress, resetState } = useWebSocket();
   const { agents, updateAgent, deleteAgent } = useAgents();
   const { workflows, runWorkflow, stopWorkflow } = useWorkflows();
 
@@ -94,6 +94,7 @@ function App() {
               agents={agents}
               agentStatuses={agentStatuses}
               agentOutputs={agentOutputs}
+              validations={validations}
             />
             <LogStream logs={logs} agents={agents} />
           </>

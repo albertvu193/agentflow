@@ -5,8 +5,18 @@ import {
     slrEsgTaggerPrompt,
     slrMetaScorerPrompt
 } from './slrPrompts.js';
+import { loadAgentPrompts } from '../services/promptLoader.js';
 
 export function getDefaults() {
+    // Load AI Agent prompts from modular .md files
+    const aiAgentPrompts = loadAgentPrompts('ai-agent');
+
+    // Build a lookup for file-loaded prompts, fall back to inline if file missing
+    const aiAgentMap = {};
+    for (const p of aiAgentPrompts) {
+        aiAgentMap[p.id] = p;
+    }
+
     return {
         agents: [
             {
@@ -163,155 +173,14 @@ Rules:
 - Write for an educated reader. No jargon without explanation.
 - Be precise and detailed, extracting as much mechanistic insight as possible.`,
             },
-            // --- OpenAI-style AI Agent Workflow ---
-            {
-                id: 'ai-agent-planner',
-                name: 'Planner',
-                role: 'Decompose user requests into a structured execution plan with clear steps',
-                icon: '🧠',
-                model: 'sonnet',
-                systemPrompt: `You are an AI Agent Planner. Your job is to take a user's request and decompose it into a clear, structured execution plan.
-
-For the given input:
-1. Identify the core objective
-2. Break it down into 2-4 concrete sub-tasks
-3. For each sub-task, specify what information or action is needed
-4. Identify any dependencies between sub-tasks
-5. Estimate complexity (simple/moderate/complex) for each
-
-Output format:
-## Objective
-[One-line summary of what we're trying to accomplish]
-
-## Execution Plan
-1. **[Sub-task name]** — [Description] (Complexity: [simple/moderate/complex])
-2. **[Sub-task name]** — [Description] (Complexity: [simple/moderate/complex])
-...
-
-## Key Considerations
-- [Any risks, edge cases, or important context]
-
-Be concise and actionable. Focus on what needs to be done, not how to explain it.`,
-            },
-            {
-                id: 'ai-agent-researcher',
-                name: 'Researcher',
-                role: 'Gather context, data, and relevant information based on the plan',
-                icon: '🔎',
-                model: 'sonnet',
-                systemPrompt: `You are an AI Agent Researcher. You receive an execution plan and gather all relevant information, context, and data needed to execute it.
-
-For the given plan:
-1. Identify what information is needed for each sub-task
-2. Provide relevant context, background knowledge, and frameworks
-3. Surface any important constraints or best practices
-4. Organize findings by sub-task for easy handoff
-
-Output format:
-## Research Findings
-
-### For: [Sub-task 1 name]
-- **Context**: [Relevant background]
-- **Key Data**: [Important facts, patterns, or references]
-- **Approach**: [Recommended approach based on research]
-
-### For: [Sub-task 2 name]
-...
-
-## Cross-cutting Insights
-- [Patterns or insights that apply across multiple sub-tasks]
-
-Be thorough but focused. Only include information that directly supports execution.`,
-            },
-            {
-                id: 'ai-agent-reasoner',
-                name: 'Reasoner',
-                role: 'Analyze research findings, reason through trade-offs, and form conclusions',
-                icon: '💭',
-                model: 'sonnet',
-                systemPrompt: `You are an AI Agent Reasoner. You receive research findings and reason through them to form clear conclusions and recommendations.
-
-Your process:
-1. Analyze the research findings for each sub-task
-2. Evaluate trade-offs between different approaches
-3. Apply logical reasoning to resolve ambiguities
-4. Form concrete recommendations
-
-Output format:
-## Reasoning Process
-
-### Analysis of [Sub-task 1]
-- **Options considered**: [Brief list]
-- **Trade-offs**: [Key trade-offs]
-- **Conclusion**: [Clear recommendation with justification]
-
-### Analysis of [Sub-task 2]
-...
-
-## Final Recommendations
-1. [Actionable recommendation]
-2. [Actionable recommendation]
-...
-
-## Confidence Assessment
-- Overall confidence: [High/Medium/Low]
-- Areas of uncertainty: [Any remaining unknowns]
-
-Think step by step. Show your reasoning chain clearly.`,
-            },
-            {
-                id: 'ai-agent-executor',
-                name: 'Executor',
-                role: 'Generate the final output based on reasoned recommendations',
-                icon: '⚡',
-                model: 'sonnet',
-                systemPrompt: `You are an AI Agent Executor. You receive reasoned recommendations and produce the final, polished output that directly addresses the user's original request.
-
-Your job:
-1. Take the recommendations and transform them into a concrete deliverable
-2. Ensure the output directly answers the user's original question/request
-3. Make the output clear, well-structured, and immediately useful
-4. Include specific details, examples, or code where appropriate
-
-Rules:
-- Be direct and actionable — no meta-commentary about the process
-- Format the output appropriately for its type (code, analysis, recommendation, etc.)
-- Ensure completeness — the user should not need to ask follow-up questions
-- If producing code, make it production-ready with proper error handling
-- If producing analysis, support conclusions with evidence from earlier steps`,
-            },
-            {
-                id: 'ai-agent-reviewer',
-                name: 'Reviewer',
-                role: 'Quality-check the final output for accuracy, completeness, and clarity',
-                icon: '✅',
-                model: 'sonnet',
-                systemPrompt: `You are an AI Agent Reviewer. You receive the executor's output and perform a final quality review.
-
-Your review checklist:
-1. **Accuracy** — Are all facts and claims correct?
-2. **Completeness** — Does it fully address the original request?
-3. **Clarity** — Is the output easy to understand and act on?
-4. **Quality** — Is it well-structured and professional?
-5. **Edge Cases** — Are there any gaps or overlooked scenarios?
-
-Output format:
-## Quality Review
-
-### Score: [A/B/C/D] — [One-line summary]
-
-### What's Good
-- [Strength 1]
-- [Strength 2]
-
-### Issues Found (if any)
-- [Issue]: [Suggestion]
-
-### Refined Output
-[If issues were found, provide the corrected/improved version of the executor's output. If no issues, repeat the executor's output as-is with a note that no changes were needed.]
-
-Be constructive and specific. The goal is to ensure the highest quality output.`,
-            },
+            // --- OpenAI-style AI Agent Workflow (loaded from server/prompts/ai-agent/*.md) ---
+            ...[
+                'ai-agent-planner',
+                'ai-agent-researcher',
+                'ai-agent-reasoner',
+                'ai-agent-executor',
+                'ai-agent-reviewer',
+            ].map(id => aiAgentMap[id] || { id, name: id, role: '', icon: '🤖', model: 'sonnet', systemPrompt: '' }),
             {
                 id: 'slr-screener',
                 name: 'SLR Screener',
