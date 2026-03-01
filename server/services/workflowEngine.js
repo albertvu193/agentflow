@@ -71,8 +71,23 @@ export class WorkflowEngine {
                     timestamp: new Date().toISOString(),
                 });
 
-                // Run the agent
-                const output = await this.agentRunner.runAgent(agent, stepInput, runId);
+                // Run the agent — use streaming mode for AI Agent workflow
+                // so intermediate output is visible in real-time
+                const useStreaming = agent.id.startsWith('ai-agent-');
+                let output;
+                if (useStreaming) {
+                    output = await this.agentRunner.runAgentStreaming(agent, stepInput, runId, (chunk) => {
+                        this.broadcast({
+                            type: 'agent:chunk',
+                            runId,
+                            agentId: agent.id,
+                            chunk,
+                            timestamp: new Date().toISOString(),
+                        });
+                    });
+                } else {
+                    output = await this.agentRunner.runAgent(agent, stepInput, runId);
+                }
                 previousOutput = output;
 
                 // Small delay between agents for visual effect

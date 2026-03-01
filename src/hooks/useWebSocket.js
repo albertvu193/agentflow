@@ -57,6 +57,14 @@ export function useWebSocket() {
                     }));
                     break;
 
+                case 'agent:chunk':
+                    // Streaming intermediate output — append chunk
+                    setAgentOutputs((prev) => ({
+                        ...prev,
+                        [message.agentId]: (prev[message.agentId] || '') + message.chunk,
+                    }));
+                    break;
+
                 case 'agent:log':
                     setLogs((prev) => [
                         ...prev.slice(-200), // Keep last 200 logs
