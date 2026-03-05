@@ -214,9 +214,139 @@ function StepSummary({ stepKey, result }) {
   return null;
 }
 
+/* ─── Helper: collect unique values from results for filter dropdowns ── */
+function collectFilterOptions(results) {
+  const paths = new Set();
+  const cgMechs = new Set();
+  const esgOutcomes = new Set();
+  const metaPotentials = new Set();
+  const findingDirs = new Set();
+  const regions = new Set();
+  const methods = new Set();
+  const industries = new Set();
+
+  results.forEach(r => {
+    const sr = r?.step_results;
+    if (!sr) return;
+    if (sr.path?.path) paths.add(sr.path.path);
+    (sr.cg?.cg_mechanisms || []).forEach(v => cgMechs.add(v));
+    (sr.esg?.esg_outcomes || []).forEach(v => esgOutcomes.add(v));
+    if (sr.meta?.meta_potential) metaPotentials.add(sr.meta.meta_potential);
+    if (sr.meta?.main_finding_direction) findingDirs.add(sr.meta.main_finding_direction);
+    if (sr.meta?.country_region) regions.add(sr.meta.country_region);
+    (sr.meta?.estimation_methods || []).forEach(v => methods.add(v));
+    if (sr.meta?.industry_type && sr.meta.industry_type !== 'Not_Clear') industries.add(sr.meta.industry_type);
+  });
+
+  return {
+    paths: [...paths].sort(),
+    cgMechs: [...cgMechs].sort(),
+    esgOutcomes: [...esgOutcomes].sort(),
+    metaPotentials: [...metaPotentials],
+    findingDirs: [...findingDirs],
+    regions: [...regions].sort(),
+    methods: [...methods].sort(),
+    industries: [...industries].sort(),
+  };
+}
+
+/* ─── Structured detail panel for expanded rows ──────────────────────── */
+function ExpandedDetails({ result }) {
+  const screen = result.step_results?.screen || {};
+  const path = result.step_results?.path || {};
+  const cg = result.step_results?.cg || {};
+  const esg = result.step_results?.esg || {};
+  const meta = result.step_results?.meta || {};
+  const rowInfo = result._original_row || {};
+
+  const DetailRow = ({ label, children }) => (
+    children ? <div className="lr__detail-row"><span className="lr__detail-label">{label}</span><span className="lr__detail-value">{children}</span></div> : null
+  );
+
+  const ChipList = ({ items, cls }) => (
+    items && items.length > 0 ? (
+      <div className="r-flex" style={{ flexWrap: 'wrap', gap: 4 }}>
+        {items.map(t => <span key={t} className={`r-chip ${cls || ''}`}>{t.replace(/_/g, ' ')}</span>)}
+      </div>
+    ) : null
+  );
+
+  return (
+    <div className="lr__expanded">
+      {/* Screening */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">Screening</h4>
+        <DetailRow label="Status">{screen.status}</DetailRow>
+        <DetailRow label="Exclusion Code">{screen.exclusion_code}</DetailRow>
+        <DetailRow label="Record Type">{screen.record_type?.replace(/_/g, ' ')}</DetailRow>
+        <DetailRow label="Confidence">{screen.confidence != null ? `${Math.round(screen.confidence * 100)}%` : null}</DetailRow>
+        <DetailRow label="Reasoning">{screen.reasoning}</DetailRow>
+      </div>
+
+      {/* Path & Relations */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">Path & Relations</h4>
+        <DetailRow label="Path Category">{path.path?.replace(/_/g, ' ')}</DetailRow>
+        <DetailRow label="Relation Types"><ChipList items={path.relation_types} cls="r-chip-sky" /></DetailRow>
+        <DetailRow label="Firm Perf Included">{path.firm_perf_included}</DetailRow>
+        {path.firm_perf_measure_type && (
+          <DetailRow label="FP Measures"><ChipList items={path.firm_perf_measure_type} /></DetailRow>
+        )}
+        <DetailRow label="Moderation Tested">{path.moderation_tested}</DetailRow>
+        <DetailRow label="Mediation Tested">{path.mediation_tested}</DetailRow>
+      </div>
+
+      {/* CG Mechanisms */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">CG Mechanisms</h4>
+        <DetailRow label="Groups"><ChipList items={cg.cg_mechanisms} cls="r-chip-indigo" /></DetailRow>
+        <DetailRow label="Details"><ChipList items={cg.cg_mechanism_details} /></DetailRow>
+        <DetailRow label="Reasoning">{cg.reasoning}</DetailRow>
+      </div>
+
+      {/* ESG Outcomes */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">ESG Outcomes</h4>
+        <DetailRow label="Outcome Types"><ChipList items={esg.esg_outcomes} cls="r-chip-emerald" /></DetailRow>
+        <DetailRow label="Measure Types"><ChipList items={esg.esg_measure_types} /></DetailRow>
+        <DetailRow label="Reasoning">{esg.reasoning}</DetailRow>
+      </div>
+
+      {/* Meta / Context */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">Meta-Analysis & Context</h4>
+        <DetailRow label="Meta Potential">{meta.meta_potential}</DetailRow>
+        <DetailRow label="Meta Path Fit">{meta.meta_path_fit?.replace(/_/g, ' ')}</DetailRow>
+        <DetailRow label="Finding Direction">{meta.main_finding_direction}</DetailRow>
+        <DetailRow label="Finding Note">{meta.main_finding_note}</DetailRow>
+        <DetailRow label="Study Design">{meta.study_design}</DetailRow>
+        <DetailRow label="Methods"><ChipList items={meta.estimation_methods} /></DetailRow>
+        <DetailRow label="Endogeneity">{meta.endogeneity_addressed}</DetailRow>
+        <DetailRow label="Theories"><ChipList items={meta.theories_used} /></DetailRow>
+        <DetailRow label="Country/Region">{meta.country_name || meta.country_region}</DetailRow>
+        <DetailRow label="Market Type">{meta.market_type}</DetailRow>
+        <DetailRow label="Industry">{meta.industry_type?.replace(/_/g, ' ')}</DetailRow>
+        <DetailRow label="Reasoning">{meta.reasoning}</DetailRow>
+      </div>
+
+      {/* Abstract */}
+      <div className="lr__detail-panel">
+        <h4 className="lr__detail-panel-title">Abstract</h4>
+        <p className="r-text-sm" style={{ color: 'var(--r-text-secondary)', lineHeight: 1.7, margin: 0 }}>
+          {rowInfo.Abstract || rowInfo.abstract || 'N/A'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Full Results View ───────────────────────────────────────────────── */
 function SLRResultsView({ results, onReset, dedups }) {
-  const [filter, setFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [advancedFilters, setAdvancedFilters] = useState({
+    path: '', cgMech: '', esgOutcome: '', metaPotential: '', findingDir: '', region: '', method: '', industry: '',
+  });
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
   const [teachModal, setTeachModal] = useState(null);
   const [teachStatus, setTeachStatus] = useState(null);
@@ -236,12 +366,31 @@ function SLRResultsView({ results, onReset, dedups }) {
     if (s in counts) counts[s]++;
   });
 
+  const filterOptions = collectFilterOptions(results);
+
+  const activeFilterCount = Object.values(advancedFilters).filter(v => v).length;
+
   const filteredResults = results.filter(r => {
     if (!r?.step_results) return false;
-    const s = r.step_results.screen?.status || 'Unknown';
-    return filter === 'All' || s === filter;
+    const sr = r.step_results;
+    const s = sr.screen?.status || 'Unknown';
+    if (statusFilter !== 'All' && s !== statusFilter) return false;
+    if (advancedFilters.path && sr.path?.path !== advancedFilters.path) return false;
+    if (advancedFilters.cgMech && !(sr.cg?.cg_mechanisms || []).includes(advancedFilters.cgMech)) return false;
+    if (advancedFilters.esgOutcome && !(sr.esg?.esg_outcomes || []).includes(advancedFilters.esgOutcome)) return false;
+    if (advancedFilters.metaPotential && sr.meta?.meta_potential !== advancedFilters.metaPotential) return false;
+    if (advancedFilters.findingDir && sr.meta?.main_finding_direction !== advancedFilters.findingDir) return false;
+    if (advancedFilters.region && sr.meta?.country_region !== advancedFilters.region) return false;
+    if (advancedFilters.method && !(sr.meta?.estimation_methods || []).includes(advancedFilters.method)) return false;
+    if (advancedFilters.industry && sr.meta?.industry_type !== advancedFilters.industry) return false;
+    return true;
   });
 
+  const clearAdvancedFilters = () => setAdvancedFilters({
+    path: '', cgMech: '', esgOutcome: '', metaPotential: '', findingDir: '', region: '', method: '', industry: '',
+  });
+
+  // ─── master_dt-aligned CSV export ─────────────────────────────────────
   const csvEscape = (val) => {
     const s = String(val ?? '');
     if (s.includes(',') || s.includes('"') || s.includes('\n')) {
@@ -250,36 +399,78 @@ function SLRResultsView({ results, onReset, dedups }) {
     return s;
   };
 
+  const arrJoin = (arr) => (Array.isArray(arr) ? arr : []).join('; ');
+
+  const buildExportRow = (r, idx) => {
+    const row = r._original_row || {};
+    const screen = r.step_results?.screen || {};
+    const path = r.step_results?.path || {};
+    const cg = r.step_results?.cg || {};
+    const esg = r.step_results?.esg || {};
+    const meta = r.step_results?.meta || {};
+    return {
+      'Record_ID': idx + 1,
+      'Title': row.Title || row.title || '',
+      'Authors': row.Authors || row['Author full names'] || '',
+      'Year': row.Year || '',
+      'Journal': row.Journal || row['Source title'] || row.source || '',
+      'DOI': row.DOI || '',
+      'Source_DB': row._source || '',
+      'Document_Type': row['Document Type'] || '',
+      'Abstract': row.Abstract || row.abstract || '',
+      'Author_Keywords': row['Author Keywords'] || '',
+      'Index_Keywords': row['Index Keywords'] || row['Keywords Plus'] || '',
+      // AI Screening
+      'AI_Screen_Status': screen.status || '',
+      'AI_Screen_Reason': screen.exclusion_code || '',
+      'AI_Confidence': screen.confidence != null ? Math.round(screen.confidence * 100) : '',
+      'AI_Reasoning': screen.reasoning || '',
+      'AI_Record_Type': screen.record_type || '',
+      // AI Path
+      'AI_Path_Category': path.path || '',
+      'AI_Relation_Type': arrJoin(path.relation_types),
+      'AI_FP_Included': path.firm_perf_included || '',
+      'AI_FP_Measure_Type': arrJoin(path.firm_perf_measure_type),
+      'AI_Moderation_Tested': path.moderation_tested || '',
+      'AI_Mediation_Tested': path.mediation_tested || '',
+      // AI CG
+      'AI_CG_Mechanism_Group': arrJoin(cg.cg_mechanisms),
+      'AI_CG_Mechanism_Detail': arrJoin(cg.cg_mechanism_details),
+      // AI ESG
+      'AI_ESG_Outcome_Type': arrJoin(esg.esg_outcomes),
+      'AI_ESG_Measure_Type': arrJoin(esg.esg_measure_types),
+      // AI Meta
+      'AI_Meta_Potential': meta.meta_potential || '',
+      'AI_Meta_Path_Fit': meta.meta_path_fit || '',
+      'AI_Finding_Direction': meta.main_finding_direction || '',
+      'AI_Finding_Note': meta.main_finding_note || '',
+      'AI_Study_Design': meta.study_design || '',
+      'AI_Estimation_Method': arrJoin(meta.estimation_methods),
+      'AI_Endogeneity': meta.endogeneity_addressed || '',
+      'AI_Theory_Used': arrJoin(meta.theories_used),
+      'AI_Country_Region': meta.country_region || '',
+      'AI_Country_Name': meta.country_name || '',
+      'AI_Market_Type': meta.market_type || '',
+      'AI_Industry_Type': meta.industry_type || '',
+      // User review columns (blank for manual fill)
+      'User_Screen_Status': '',
+      'User_Notes': '',
+      'User_Changed': '',
+    };
+  };
+
   const exportCsv = () => {
-    let csv = 'Article ID,Title,Authors,Year,Journal,DOI,Screen Status,Exclusion Code,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
-    filteredResults.forEach((r, idx) => {
-      const row = r._original_row || {};
-      const screen = r.step_results?.screen || {};
-      const path = r.step_results?.path || {};
-      const cg = r.step_results?.cg || {};
-      const esg = r.step_results?.esg || {};
-      const meta = r.step_results?.meta || {};
-      const cgStr = (Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).join('; ');
-      const esgStr = (Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).join('; ');
-      csv += [
-        idx + 1,
-        csvEscape(row.Title || row.title || ''),
-        csvEscape(row.Authors || ''),
-        csvEscape(row.Year || ''),
-        csvEscape(row.Journal || ''),
-        csvEscape(row.DOI || ''),
-        csvEscape(screen.status || ''),
-        csvEscape(screen.exclusion_code || ''),
-        csvEscape(path.path || ''),
-        csvEscape(cgStr),
-        csvEscape(esgStr),
-        csvEscape(meta.meta_potential || ''),
-      ].join(',') + '\n';
+    const rows = filteredResults.map((r, idx) => buildExportRow(r, idx));
+    if (rows.length === 0) return;
+    const headers = Object.keys(rows[0]);
+    let csv = headers.map(csvEscape).join(',') + '\n';
+    rows.forEach(row => {
+      csv += headers.map(h => csvEscape(row[h])).join(',') + '\n';
     });
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'slr_results.csv'; a.click();
+    a.href = url; a.download = 'master_dt.csv'; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -323,13 +514,25 @@ function SLRResultsView({ results, onReset, dedups }) {
     return `r-badge ${cls}`;
   };
 
+  const findingBadge = (dir) => {
+    if (!dir) return null;
+    const cls = dir === 'Positive' ? 'r-badge-success' :
+                dir === 'Negative' ? 'r-badge-danger' :
+                dir === 'Mixed' ? 'r-badge-warning' :
+                dir === 'Insignificant' ? 'r-badge-neutral' : 'r-badge-info';
+    return <span className={`r-badge ${cls}`} style={{ fontSize: 10, padding: '1px 5px' }}>{dir}</span>;
+  };
+
   return (
     <div className="lr r-fade-in">
       {/* Header */}
       <div className="r-section-header">
         <div className="r-section-title-group">
           <h1>Review Results</h1>
-          <p className="r-text-secondary r-text-sm">{total} articles processed</p>
+          <p className="r-text-secondary r-text-sm">
+            {total} articles processed
+            {filteredResults.length !== total && ` \u00B7 ${filteredResults.length} shown`}
+          </p>
         </div>
         <div className="r-flex r-gap-1">
           <button className="r-btn r-btn-secondary" onClick={onReset}>New Batch</button>
@@ -369,18 +572,94 @@ function SLRResultsView({ results, onReset, dedups }) {
         </div>
       </div>
 
-      {/* Filter tabs */}
+      {/* Status filter tabs */}
       <div className="r-tabs r-mt-3">
         {['All', 'Include', 'Maybe', 'Exclude', 'Background'].map(f => (
           <button
             key={f}
-            className={`r-tab ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(f)}
+            className={`r-tab ${statusFilter === f ? 'active' : ''}`}
+            onClick={() => setStatusFilter(f)}
           >
             {f} {f !== 'All' && counts[f] != null ? `(${counts[f]})` : ''}
           </button>
         ))}
+        <button
+          className={`r-tab ${showAdvancedFilters ? 'active' : ''}`}
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          style={{ marginLeft: 'auto' }}
+        >
+          Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+        </button>
       </div>
+
+      {/* Advanced filter panel */}
+      {showAdvancedFilters && (
+        <div className="lr__filters r-card r-card-padded r-slide-up">
+          <div className="lr__filters-grid">
+            <div className="lr__filter-group">
+              <label className="r-label">Path</label>
+              <select className="r-select" value={advancedFilters.path} onChange={e => setAdvancedFilters(f => ({ ...f, path: e.target.value }))}>
+                <option value="">All Paths</option>
+                {filterOptions.paths.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">CG Mechanism</label>
+              <select className="r-select" value={advancedFilters.cgMech} onChange={e => setAdvancedFilters(f => ({ ...f, cgMech: e.target.value }))}>
+                <option value="">All CG</option>
+                {filterOptions.cgMechs.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">ESG Outcome</label>
+              <select className="r-select" value={advancedFilters.esgOutcome} onChange={e => setAdvancedFilters(f => ({ ...f, esgOutcome: e.target.value }))}>
+                <option value="">All ESG</option>
+                {filterOptions.esgOutcomes.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">Meta Potential</label>
+              <select className="r-select" value={advancedFilters.metaPotential} onChange={e => setAdvancedFilters(f => ({ ...f, metaPotential: e.target.value }))}>
+                <option value="">All</option>
+                {filterOptions.metaPotentials.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">Finding Direction</label>
+              <select className="r-select" value={advancedFilters.findingDir} onChange={e => setAdvancedFilters(f => ({ ...f, findingDir: e.target.value }))}>
+                <option value="">All</option>
+                {filterOptions.findingDirs.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">Region</label>
+              <select className="r-select" value={advancedFilters.region} onChange={e => setAdvancedFilters(f => ({ ...f, region: e.target.value }))}>
+                <option value="">All Regions</option>
+                {filterOptions.regions.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">Method</label>
+              <select className="r-select" value={advancedFilters.method} onChange={e => setAdvancedFilters(f => ({ ...f, method: e.target.value }))}>
+                <option value="">All Methods</option>
+                {filterOptions.methods.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="lr__filter-group">
+              <label className="r-label">Industry</label>
+              <select className="r-select" value={advancedFilters.industry} onChange={e => setAdvancedFilters(f => ({ ...f, industry: e.target.value }))}>
+                <option value="">All Industries</option>
+                {filterOptions.industries.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <div className="r-mt-1">
+              <button className="r-btn r-btn-ghost r-btn-sm" onClick={clearAdvancedFilters}>Clear all filters</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Results table */}
       <div className="r-table-container">
@@ -392,6 +671,7 @@ function SLRResultsView({ results, onReset, dedups }) {
               <th>Decision</th>
               <th>Path</th>
               <th>Tags</th>
+              <th>Meta & Finding</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -401,6 +681,7 @@ function SLRResultsView({ results, onReset, dedups }) {
               const path = r.step_results?.path || {};
               const cg = r.step_results?.cg || {};
               const esg = r.step_results?.esg || {};
+              const meta = r.step_results?.meta || {};
               const rowInfo = r._original_row || {};
               const isExpanded = expandedRow === i;
 
@@ -408,7 +689,7 @@ function SLRResultsView({ results, onReset, dedups }) {
                 <React.Fragment key={i}>
                   <tr>
                     <td>{(r._index ?? i) + 1}</td>
-                    <td style={{ maxWidth: '340px' }}>
+                    <td style={{ maxWidth: '300px' }}>
                       <div style={{ fontWeight: 600, color: 'var(--r-text)', lineHeight: 1.4 }}>
                         {rowInfo.Title || rowInfo.title || 'Unknown Title'}
                       </div>
@@ -423,32 +704,47 @@ function SLRResultsView({ results, onReset, dedups }) {
                         <div className="r-text-xs r-text-muted r-mt-1">{screen.exclusion_code}</div>
                       )}
                       {screen.confidence != null && (
-                        <div className="r-text-xs r-text-muted">{Math.round(screen.confidence * 100)}% conf.</div>
+                        <div className="r-text-xs r-text-muted">{Math.round(screen.confidence * 100)}%</div>
                       )}
                     </td>
                     <td>
                       {path.path && (
-                        <span className="r-chip r-chip-sky">{path.path.replace(/_/g, ' ')}</span>
+                        <span className="r-chip r-chip-sky" style={{ fontSize: 11 }}>{path.path.replace(/_/g, ' ')}</span>
                       )}
                       {path.skipped && (
                         <span className="r-chip">skipped</span>
                       )}
                     </td>
-                    <td style={{ maxWidth: '240px' }}>
-                      <div className="r-flex" style={{ flexWrap: 'wrap', gap: 4 }}>
+                    <td style={{ maxWidth: '220px' }}>
+                      <div className="r-flex" style={{ flexWrap: 'wrap', gap: 3 }}>
                         {(Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).slice(0, 2).map(t => (
-                          <span key={t} className="r-chip r-chip-indigo">{t.replace(/_/g, ' ')}</span>
+                          <span key={t} className="r-chip r-chip-indigo" style={{ fontSize: 10 }}>{t.replace(/_/g, ' ')}</span>
                         ))}
                         {(Array.isArray(cg.cg_mechanisms) && cg.cg_mechanisms.length > 2) && (
-                          <span className="r-chip">+{cg.cg_mechanisms.length - 2}</span>
+                          <span className="r-chip" style={{ fontSize: 10 }}>+{cg.cg_mechanisms.length - 2}</span>
                         )}
                         {(Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).slice(0, 2).map(t => (
-                          <span key={t} className="r-chip r-chip-emerald">{t.replace(/_/g, ' ')}</span>
+                          <span key={t} className="r-chip r-chip-emerald" style={{ fontSize: 10 }}>{t.replace(/_/g, ' ')}</span>
                         ))}
                         {(Array.isArray(esg.esg_outcomes) && esg.esg_outcomes.length > 2) && (
-                          <span className="r-chip">+{esg.esg_outcomes.length - 2}</span>
+                          <span className="r-chip" style={{ fontSize: 10 }}>+{esg.esg_outcomes.length - 2}</span>
                         )}
                       </div>
+                    </td>
+                    <td>
+                      {meta.meta_potential && (
+                        <span className={`r-badge ${meta.meta_potential === 'High' ? 'r-badge-success' : meta.meta_potential === 'Low' ? 'r-badge-danger' : 'r-badge-warning'}`}
+                          style={{ fontSize: 10, padding: '1px 5px' }}>
+                          {meta.meta_potential}
+                        </span>
+                      )}
+                      {findingBadge(meta.main_finding_direction)}
+                      {meta.country_region && meta.country_region !== 'Not_Clear' && (
+                        <div className="r-text-xs r-text-muted r-mt-1">{meta.country_name || meta.country_region.replace(/_/g, ' ')}</div>
+                      )}
+                      {meta.study_design && meta.study_design !== 'Not_Clear' && (
+                        <div className="r-text-xs r-text-muted">{meta.study_design}</div>
+                      )}
                     </td>
                     <td>
                       <div className="r-flex r-gap-1">
@@ -473,25 +769,8 @@ function SLRResultsView({ results, onReset, dedups }) {
 
                   {isExpanded && (
                     <tr>
-                      <td colSpan="6" style={{ padding: '16px 20px', background: 'var(--r-bg-alt)' }}>
-                        <div className="lr__expanded">
-                          <div className="lr__expanded-section">
-                            <h4>Reasoning</h4>
-                            <p className="r-text-sm">{screen.reasoning || 'N/A'}</p>
-                          </div>
-                          <div className="lr__expanded-section">
-                            <h4>Abstract</h4>
-                            <p className="r-text-sm">{rowInfo.Abstract || rowInfo.abstract || 'N/A'}</p>
-                          </div>
-                          <div className="lr__expanded-grid">
-                            {['screen', 'path', 'cg', 'esg', 'meta'].map(step => (
-                              <div key={step} className="lr__expanded-step">
-                                <h4>{step.toUpperCase()}</h4>
-                                <pre className="lr__step-json">{JSON.stringify(r.step_results[step], null, 2)}</pre>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      <td colSpan="7" style={{ padding: '16px 20px', background: 'var(--r-bg-alt)' }}>
+                        <ExpandedDetails result={r} />
                       </td>
                     </tr>
                   )}
@@ -504,7 +783,7 @@ function SLRResultsView({ results, onReset, dedups }) {
           <div className="r-empty">
             <div className="r-empty__icon">?</div>
             <h3>No articles match this filter</h3>
-            <p>Try selecting a different filter tab above.</p>
+            <p>Try adjusting your filter criteria above.</p>
           </div>
         )}
       </div>

@@ -122,3 +122,61 @@
   word-break: break-word;
   margin: 0;
 }
+
+/* ── Advanced filters panel ──────────────────── */
+.lr__filters {
+  margin-bottom: 16px;
+}
+
+.lr__filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.lr__filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Structured detail panels ────────────────── */
+.lr__detail-panel {
+  background: var(--r-bg-card);
+  border: 1px solid var(--r-border);
+  border-radius: var(--r-radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.lr__detail-panel-title {
+  font-size: 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--r-text-muted) !important;
+  margin-bottom: 10px !important;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--r-border-light);
+}
+
+.lr__detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 4px 0;
+  font-size: 13px;
+  gap: 12px;
+}
+
+.lr__detail-label {
+  color: var(--r-text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.lr__detail-value {
+  color: var(--r-text);
+  text-align: right;
+  word-break: break-word;
+}
