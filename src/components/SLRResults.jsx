@@ -5,17 +5,46 @@ import { StepOutput } from './StepOutput';
 /**
  * SLRResults — renders the results table after the batch is done.
  *
- * Key features added beyond the original port:
- *  - "Maybe" status shown with its own color + label (not collapsed into Include)
- *  - "Teach AI" button on each row opens a correction modal that calls POST /api/slr/feedback
- *    to append a corrected example directly into the relevant agent's system prompt.
- *  - Filter tabs include "Maybe" for the researcher to focus on uncertain articles first.
+ * Features:
+ *  - Status filter tabs (Include / Maybe / Exclude / Background)
+ *  - Advanced multi-dimensional filters (Path, CG, ESG, Meta, Finding, Region, Method, Industry)
+ *  - "Teach AI" button for self-improving feedback loop
+ *  - master_dt-aligned CSV export with all AI screening columns
+ *  - Structured expanded details panel
  */
+
+/* ─── Collect unique values from results for filter dropdowns ── */
+function collectFilterOptions(results) {
+  const paths = new Set(), cgMechs = new Set(), esgOutcomes = new Set();
+  const metaPotentials = new Set(), findingDirs = new Set(), regions = new Set();
+  const methods = new Set(), industries = new Set();
+  results.forEach(r => {
+    const sr = r?.step_results; if (!sr) return;
+    if (sr.path?.path) paths.add(sr.path.path);
+    (sr.cg?.cg_mechanisms || []).forEach(v => cgMechs.add(v));
+    (sr.esg?.esg_outcomes || []).forEach(v => esgOutcomes.add(v));
+    if (sr.meta?.meta_potential) metaPotentials.add(sr.meta.meta_potential);
+    if (sr.meta?.main_finding_direction) findingDirs.add(sr.meta.main_finding_direction);
+    if (sr.meta?.country_region) regions.add(sr.meta.country_region);
+    (sr.meta?.estimation_methods || []).forEach(v => methods.add(v));
+    if (sr.meta?.industry_type && sr.meta.industry_type !== 'Not_Clear') industries.add(sr.meta.industry_type);
+  });
+  return {
+    paths: [...paths].sort(), cgMechs: [...cgMechs].sort(), esgOutcomes: [...esgOutcomes].sort(),
+    metaPotentials: [...metaPotentials], findingDirs: [...findingDirs],
+    regions: [...regions].sort(), methods: [...methods].sort(), industries: [...industries].sort(),
+  };
+}
+
 export function SLRResults({ results, onReset, dedups }) {
     const [filter, setFilter] = useState('All');
+    const [advancedFilters, setAdvancedFilters] = useState({
+        path: '', cgMech: '', esgOutcome: '', metaPotential: '', findingDir: '', region: '', method: '', industry: '',
+    });
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [expandedRow, setExpandedRow] = useState(null);
-    const [teachModal, setTeachModal] = useState(null); // { result, step }
-    const [teachStatus, setTeachStatus] = useState(null); // 'saving' | 'saved' | 'error'
+    const [teachModal, setTeachModal] = useState(null);
+    const [teachStatus, setTeachStatus] = useState(null);
 
     // ─── Stats ────────────────────────────────────────────────────────────────
     const total = results.length;
@@ -25,16 +54,51 @@ export function SLRResults({ results, onReset, dedups }) {
         if (s in counts) counts[s]++;
     });
 
+    const filterOptions = collectFilterOptions(results);
+    const activeFilterCount = Object.values(advancedFilters).filter(v => v).length;
+
     // ─── Filtering ────────────────────────────────────────────────────────────
     const filteredResults = results.filter(r => {
         if (!r?.step_results) return false;
-        const s = r.step_results.screen?.status || 'Unknown';
-        return filter === 'All' || s === filter;
+        const sr = r.step_results;
+        const s = sr.screen?.status || 'Unknown';
+        if (filter !== 'All' && s !== filter) return false;
+        if (advancedFilters.path && sr.path?.path !== advancedFilters.path) return false;
+        if (advancedFilters.cgMech && !(sr.cg?.cg_mechanisms || []).includes(advancedFilters.cgMech)) return false;
+        if (advancedFilters.esgOutcome && !(sr.esg?.esg_outcomes || []).includes(advancedFilters.esgOutcome)) return false;
+        if (advancedFilters.metaPotential && sr.meta?.meta_potential !== advancedFilters.metaPotential) return false;
+        if (advancedFilters.findingDir && sr.meta?.main_finding_direction !== advancedFilters.findingDir) return false;
+        if (advancedFilters.region && sr.meta?.country_region !== advancedFilters.region) return false;
+        if (advancedFilters.method && !(sr.meta?.estimation_methods || []).includes(advancedFilters.method)) return false;
+        if (advancedFilters.industry && sr.meta?.industry_type !== advancedFilters.industry) return false;
+        return true;
     });
 
-    // ─── CSV Export ───────────────────────────────────────────────────────────
+    const clearAdvancedFilters = () => setAdvancedFilters({
+        path: '', cgMech: '', esgOutcome: '', metaPotential: '', findingDir: '', region: '', method: '', industry: '',
+    });
+
+    // ─── master_dt-aligned CSV Export ──────────────────────────────────────────
+    const csvEscape = (val) => {
+        const s = String(val ?? '');
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+    };
+    const arrJoin = (arr) => (Array.isArray(arr) ? arr : []).join('; ');
+
     const exportCsv = () => {
-        let csv = 'Article ID,Title,Authors,Year,Journal,DOI,Screen Status,Exclusion Code,Path,CG Mechanisms,ESG Outcomes,Meta Potential\n';
+        const headers = [
+            'Record_ID','Title','Authors','Year','Journal','DOI','Source_DB','Document_Type','Abstract','Author_Keywords','Index_Keywords',
+            'AI_Screen_Status','AI_Screen_Reason','AI_Confidence','AI_Reasoning','AI_Record_Type',
+            'AI_Path_Category','AI_Relation_Type','AI_FP_Included','AI_FP_Measure_Type','AI_Moderation_Tested','AI_Mediation_Tested',
+            'AI_CG_Mechanism_Group','AI_CG_Mechanism_Detail',
+            'AI_ESG_Outcome_Type','AI_ESG_Measure_Type',
+            'AI_Meta_Potential','AI_Meta_Path_Fit','AI_Finding_Direction','AI_Finding_Note',
+            'AI_Study_Design','AI_Estimation_Method','AI_Endogeneity','AI_Theory_Used',
+            'AI_Country_Region','AI_Country_Name','AI_Market_Type','AI_Industry_Type',
+            'User_Screen_Status','User_Notes','User_Changed',
+        ];
+        let csv = headers.map(csvEscape).join(',') + '\n';
         filteredResults.forEach((r, idx) => {
             const row = r._original_row || {};
             const screen = r.step_results?.screen || {};
@@ -42,15 +106,27 @@ export function SLRResults({ results, onReset, dedups }) {
             const cg = r.step_results?.cg || {};
             const esg = r.step_results?.esg || {};
             const meta = r.step_results?.meta || {};
-            const title = `"${(row.Title || row.title || '').replace(/"/g, '""')}"`;
-            const cgStr = `"${(Array.isArray(cg.cg_mechanisms) ? cg.cg_mechanisms : []).join('; ')}"`;
-            const esgStr = `"${(Array.isArray(esg.esg_outcomes) ? esg.esg_outcomes : []).join('; ')}"`;
-            csv += `${idx + 1},${title},"${row.Authors || ''}",${row.Year || ''},"${row.Journal || ''}",${row.DOI || ''},${screen.status || ''},${screen.exclusion_code || ''},${path.path || ''},${cgStr},${esgStr},${meta.meta_potential || ''}\n`;
+            csv += [
+                idx + 1, row.Title || row.title || '', row.Authors || row['Author full names'] || '',
+                row.Year || '', row.Journal || row['Source title'] || row.source || '', row.DOI || '',
+                row._source || '', row['Document Type'] || '', row.Abstract || row.abstract || '',
+                row['Author Keywords'] || '', row['Index Keywords'] || row['Keywords Plus'] || '',
+                screen.status || '', screen.exclusion_code || '',
+                screen.confidence != null ? Math.round(screen.confidence * 100) : '', screen.reasoning || '', screen.record_type || '',
+                path.path || '', arrJoin(path.relation_types), path.firm_perf_included || '',
+                arrJoin(path.firm_perf_measure_type), path.moderation_tested || '', path.mediation_tested || '',
+                arrJoin(cg.cg_mechanisms), arrJoin(cg.cg_mechanism_details),
+                arrJoin(esg.esg_outcomes), arrJoin(esg.esg_measure_types),
+                meta.meta_potential || '', meta.meta_path_fit || '', meta.main_finding_direction || '', meta.main_finding_note || '',
+                meta.study_design || '', arrJoin(meta.estimation_methods), meta.endogeneity_addressed || '', arrJoin(meta.theories_used),
+                meta.country_region || '', meta.country_name || '', meta.market_type || '', meta.industry_type || '',
+                '', '', '',
+            ].map(csvEscape).join(',') + '\n';
         });
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'slr_results.csv'; a.click();
+        a.href = url; a.download = 'master_dt.csv'; a.click();
         URL.revokeObjectURL(url);
     };
 
@@ -137,7 +213,44 @@ export function SLRResults({ results, onReset, dedups }) {
                         {f} {f !== 'All' && counts[f] != null ? `(${counts[f]})` : ''}
                     </button>
                 ))}
+                <button
+                    className={`filter-tab ${showAdvancedFilters ? 'active' : ''}`}
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    style={{ marginLeft: 'auto' }}
+                >
+                    Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                </button>
             </div>
+
+            {/* Advanced filter panel */}
+            {showAdvancedFilters && (
+                <div className="advanced-filters-panel mb-2">
+                    <div className="advanced-filters-grid">
+                        {[
+                            { key: 'path', label: 'Path', opts: filterOptions.paths },
+                            { key: 'cgMech', label: 'CG Mechanism', opts: filterOptions.cgMechs },
+                            { key: 'esgOutcome', label: 'ESG Outcome', opts: filterOptions.esgOutcomes },
+                            { key: 'metaPotential', label: 'Meta Potential', opts: filterOptions.metaPotentials },
+                            { key: 'findingDir', label: 'Finding', opts: filterOptions.findingDirs },
+                            { key: 'region', label: 'Region', opts: filterOptions.regions },
+                            { key: 'method', label: 'Method', opts: filterOptions.methods },
+                            { key: 'industry', label: 'Industry', opts: filterOptions.industries },
+                        ].map(({ key, label, opts }) => (
+                            <div key={key} className="adv-filter-group">
+                                <label className="text-xs">{label}</label>
+                                <select className="input-select" value={advancedFilters[key]}
+                                    onChange={e => setAdvancedFilters(f => ({ ...f, [key]: e.target.value }))}>
+                                    <option value="">All</option>
+                                    {opts.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+                                </select>
+                            </div>
+                        ))}
+                    </div>
+                    {activeFilterCount > 0 && (
+                        <button className="btn btn-small mt-1" onClick={clearAdvancedFilters}>Clear all filters</button>
+                    )}
+                </div>
+            )}
 
             {/* Results table */}
             <div className="results-table-container">
@@ -149,6 +262,7 @@ export function SLRResults({ results, onReset, dedups }) {
                             <th>Screen Decision</th>
                             <th>Path</th>
                             <th>CG &amp; ESG Tags</th>
+                            <th>Meta &amp; Finding</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -158,8 +272,13 @@ export function SLRResults({ results, onReset, dedups }) {
                             const path = r.step_results?.path || {};
                             const cg = r.step_results?.cg || {};
                             const esg = r.step_results?.esg || {};
+                            const meta = r.step_results?.meta || {};
                             const rowInfo = r._original_row || {};
                             const isExpanded = expandedRow === i;
+
+                            const findingBadgeCls = meta.main_finding_direction === 'Positive' ? 'badge-success' :
+                                meta.main_finding_direction === 'Negative' ? 'badge-error' :
+                                meta.main_finding_direction === 'Mixed' ? 'badge-warning' : 'badge-neutral';
 
                             return (
                                 <React.Fragment key={i}>
@@ -168,7 +287,7 @@ export function SLRResults({ results, onReset, dedups }) {
                                         <td className="title-cell">
                                             <strong>{rowInfo.Title || rowInfo.title || 'Unknown Title'}</strong>
                                             <div className="sub-detail">
-                                                {rowInfo.Journal || rowInfo.source} {rowInfo.Year ? `• ${rowInfo.Year}` : ''}
+                                                {rowInfo.Journal || rowInfo.source} {rowInfo.Year ? `\u2022 ${rowInfo.Year}` : ''}
                                                 {rowInfo._source ? <span className="source-badge">{rowInfo._source}</span> : null}
                                             </div>
                                             {r._error && <div className="text-error mt-1 text-sm">{r._error}</div>}
@@ -180,11 +299,8 @@ export function SLRResults({ results, onReset, dedups }) {
                                             {screen.exclusion_code && (
                                                 <div className="sub-detail text-sm">{screen.exclusion_code}</div>
                                             )}
-                                            {screen.status === 'Maybe' && (
-                                                <div className="sub-detail text-sm text-warning">⚠ Needs full-text review</div>
-                                            )}
                                             {screen.confidence != null && (
-                                                <div className="sub-detail text-xs">Conf: {Math.round(screen.confidence * 100)}%</div>
+                                                <div className="sub-detail text-xs">{Math.round(screen.confidence * 100)}%</div>
                                             )}
                                         </td>
                                         <td>
@@ -215,6 +331,23 @@ export function SLRResults({ results, onReset, dedups }) {
                                                 )}
                                             </div>
                                         </td>
+                                        <td>
+                                            {meta.meta_potential && (
+                                                <span className={`badge ${meta.meta_potential === 'High' ? 'badge-success' : meta.meta_potential === 'Low' ? 'badge-error' : 'badge-warning'}`}
+                                                    style={{ fontSize: 10 }}>{meta.meta_potential}</span>
+                                            )}
+                                            {meta.main_finding_direction && (
+                                                <span className={`badge ${findingBadgeCls}`} style={{ fontSize: 10, marginLeft: 4 }}>
+                                                    {meta.main_finding_direction}
+                                                </span>
+                                            )}
+                                            {meta.country_region && meta.country_region !== 'Not_Clear' && (
+                                                <div className="sub-detail text-xs">{meta.country_name || meta.country_region.replace(/_/g, ' ')}</div>
+                                            )}
+                                            {meta.study_design && meta.study_design !== 'Not_Clear' && (
+                                                <div className="sub-detail text-xs">{meta.study_design}</div>
+                                            )}
+                                        </td>
                                         <td className="actions-cell">
                                             <button
                                                 className="btn btn-small"
@@ -227,30 +360,78 @@ export function SLRResults({ results, onReset, dedups }) {
                                                 title="Correct this prediction and teach the AI"
                                                 onClick={() => openTeachModal(r)}
                                             >
-                                                ✏️ Teach AI
+                                                Teach AI
                                             </button>
                                         </td>
                                     </tr>
 
-                                    {/* Expanded row */}
+                                    {/* Expanded row with structured details */}
                                     {isExpanded && (
                                         <tr className="row-expanded-body">
-                                            <td colSpan="6">
+                                            <td colSpan="7">
                                                 <div className="expanded-details">
-                                                    <div className="abstract-box mb-2">
-                                                        <strong>Reasoning:</strong> {screen.reasoning || 'N/A'}
+                                                    <div className="expanded-panels-grid">
+                                                        {/* Screening */}
+                                                        <div className="expanded-panel">
+                                                            <h5>SCREENING</h5>
+                                                            <div className="detail-kv"><span>Status</span><span>{screen.status}</span></div>
+                                                            {screen.exclusion_code && <div className="detail-kv"><span>Code</span><span>{screen.exclusion_code}</span></div>}
+                                                            {screen.record_type && <div className="detail-kv"><span>Type</span><span>{screen.record_type.replace(/_/g, ' ')}</span></div>}
+                                                            <div className="detail-kv"><span>Confidence</span><span>{screen.confidence != null ? Math.round(screen.confidence * 100) + '%' : 'N/A'}</span></div>
+                                                            {screen.reasoning && <div className="abstract-box mt-1">{screen.reasoning}</div>}
+                                                        </div>
+                                                        {/* Path */}
+                                                        <div className="expanded-panel">
+                                                            <h5>PATH & RELATIONS</h5>
+                                                            <div className="detail-kv"><span>Path</span><span>{path.path?.replace(/_/g, ' ') || 'N/A'}</span></div>
+                                                            {(path.relation_types || []).length > 0 && (
+                                                                <div className="tag-group mt-1">{path.relation_types.map(t => <span key={t} className="chip chip-blue">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            )}
+                                                            <div className="detail-kv"><span>FP Included</span><span>{path.firm_perf_included || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Moderation</span><span>{path.moderation_tested || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Mediation</span><span>{path.mediation_tested || 'N/A'}</span></div>
+                                                        </div>
+                                                        {/* CG */}
+                                                        <div className="expanded-panel">
+                                                            <h5>CG MECHANISMS</h5>
+                                                            <div className="tag-group">{(cg.cg_mechanisms || []).map(t => <span key={t} className="chip chip-purple">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            {(cg.cg_mechanism_details || []).length > 0 && (
+                                                                <div className="tag-group mt-1">{cg.cg_mechanism_details.map(t => <span key={t} className="chip chip-outline">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            )}
+                                                            {cg.reasoning && <div className="abstract-box mt-1">{cg.reasoning}</div>}
+                                                        </div>
+                                                        {/* ESG */}
+                                                        <div className="expanded-panel">
+                                                            <h5>ESG OUTCOMES</h5>
+                                                            <div className="tag-group">{(esg.esg_outcomes || []).map(t => <span key={t} className="chip chip-green">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            {(esg.esg_measure_types || []).length > 0 && (
+                                                                <div className="tag-group mt-1">{esg.esg_measure_types.map(t => <span key={t} className="chip chip-outline">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            )}
+                                                            {esg.reasoning && <div className="abstract-box mt-1">{esg.reasoning}</div>}
+                                                        </div>
+                                                        {/* Meta */}
+                                                        <div className="expanded-panel">
+                                                            <h5>META-ANALYSIS & CONTEXT</h5>
+                                                            <div className="detail-kv"><span>Potential</span><span>{meta.meta_potential || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Path Fit</span><span>{meta.meta_path_fit?.replace(/_/g, ' ') || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Finding</span><span>{meta.main_finding_direction || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Design</span><span>{meta.study_design || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Endogeneity</span><span>{meta.endogeneity_addressed || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Region</span><span>{meta.country_name || meta.country_region || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Market</span><span>{meta.market_type || 'N/A'}</span></div>
+                                                            <div className="detail-kv"><span>Industry</span><span>{meta.industry_type?.replace(/_/g, ' ') || 'N/A'}</span></div>
+                                                            {(meta.estimation_methods || []).length > 0 && (
+                                                                <div className="tag-group mt-1">{meta.estimation_methods.map(t => <span key={t} className="chip chip-neutral">{t}</span>)}</div>
+                                                            )}
+                                                            {(meta.theories_used || []).length > 0 && (
+                                                                <div className="tag-group mt-1">{meta.theories_used.map(t => <span key={t} className="chip chip-outline">{t.replace(/_/g, ' ')}</span>)}</div>
+                                                            )}
+                                                            {meta.main_finding_note && <div className="abstract-box mt-1">{meta.main_finding_note}</div>}
+                                                        </div>
                                                     </div>
-                                                    <div className="abstract-box mb-2">
+                                                    {/* Abstract */}
+                                                    <div className="abstract-box mt-1">
                                                         <strong>Abstract:</strong> {rowInfo.Abstract || rowInfo.abstract || 'N/A'}
-                                                    </div>
-                                                    <h4>AI Step Results</h4>
-                                                    <div className="step-results-grid">
-                                                        {['screen', 'path', 'cg', 'esg', 'meta'].map(step => (
-                                                            <div key={step} className="detail-col">
-                                                                <h5>{step.toUpperCase()}</h5>
-                                                                <StepOutput stepKey={step} result={r.step_results[step]} />
-                                                            </div>
-                                                        ))}
                                                     </div>
                                                 </div>
                                             </td>

@@ -49,6 +49,14 @@
 .chip-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 .chip-neutral { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
 .chip-outline { border: 1px solid var(--border-light); color: var(--text-secondary); }
+.chip-red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.chip-orange { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+.meta-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
 
 .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
 .badge-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
